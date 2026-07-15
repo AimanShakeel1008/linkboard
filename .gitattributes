@@ -1,0 +1,19 @@
+# Line-ending insurance for a Windows + WSL project.
+#
+# Background: Windows ends text lines with two characters (CRLF, "\r\n");
+# Linux uses one (LF, "\n"). If a shell script picks up Windows endings,
+# Linux sees a stray "\r" glued to every line and bash fails with the
+# infamous "bad interpreter: /bin/bash^M" error.
+#
+# These rules tell git to ALWAYS store and check out shell scripts (and
+# text generally) with LF endings, so scripts written on Windows run
+# perfectly inside WSL. This overrides any local core.autocrlf setting.
+
+* text=auto eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+
+# Binary files: never touch their bytes.
+*.png binary
+*.jpg binary
+*.ico binary
