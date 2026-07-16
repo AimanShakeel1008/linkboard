@@ -89,6 +89,7 @@
 
 | Date | Summary |
 |---|---|
+| 2026-07-16 | User feedback: Phase 0 lesson draft was too high-level/cryptic for a beginner. Rewrote lesson.md fully at beginner pace (story-first diagrams, one idea per sentence, "try it now" blocks, expanded Git half). Recorded the correction as a permanent rule in CLAUDE.md ("Feedback log"). Still waiting on user to run Part A (git init + first push). |
 | 2026-07-15 | Phase 0 started. Wrote the full Linux & Git lesson + playground (log hunt, runaway process, cron, git x-ray) and the repo skeleton (README, .gitignore, .gitattributes, project/ placeholder). Handed user the one-time setup steps (git init, GitHub remote, first push); waiting on their run report. |
 
 ## Key Decisions So Far

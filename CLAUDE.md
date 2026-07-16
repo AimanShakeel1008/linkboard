@@ -92,6 +92,24 @@ always ship with hidden answers.
   shorter. Break it into smaller pieces with more analogies.
 - When I ask "why", go as deep as needed — down to OS, network, or hardware.
 
+### Feedback log (real corrections I gave — follow these in every lesson)
+- **2026-07-16 (Phase 0, first draft):** The lesson was too high-level and
+  full of cryptic, compressed sentences a beginner cannot parse (e.g. "Git
+  privately logs every place HEAD has been", "You branched at C, made X and
+  Y", "Prepare for an anticlimax: a branch is a 41-byte file", "This
+  convention is load-bearing"). Rules derived from this correction:
+  1. NEVER introduce symbols or letters (commit A, B, C / X, Y) before
+     telling the concrete story they stand for. Story first, then the
+     diagram, then walk the diagram line by line.
+  2. ONE idea per sentence. If a sentence needs a second read, split it.
+  3. No witty compression, no unexplained shorthand ("load-bearing",
+     "history-destroying", "anticlimax", "paying rent"). Clever phrasing
+     that saves words at the cost of clarity is a defect, not style.
+  4. Every abstract claim gets an immediate concrete example — ideally a
+     command the reader can run right then ("Try it now" style).
+  5. Build every explanation as: everyday situation → walk through it →
+     name the technical term → show it in the terminal.
+
 ## PROGRESS TRACKING — keep PROGRESS.md true at all times
 Update `PROGRESS.md` at these moments:
 1. When a phase is completed (mark it done, set the next phase as current).
