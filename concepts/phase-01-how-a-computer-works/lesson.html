@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 01 — How a Computer Actually Works</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="page">
+
+<aside class="toc">
+  <div class="toc-inner">
+    <p class="toc-phase">Phase 01</p>
+    <nav>
+      <a href="#why">Why this phase exists</a>
+      <a href="#pa">A. Bits and bytes</a>
+      <a href="#pb">B. The CPU &amp; the memory staircase</a>
+      <a href="#pc">C. RAM vs storage, and the disk race</a>
+      <a href="#pd">D. From your code to the CPU</a>
+      <a href="#pe">E. Processes</a>
+      <a href="#pf">F. Threads</a>
+      <a href="#pg">G. The kernel</a>
+      <a href="#ph">H. Blocking I/O</a>
+      <a href="#run">Run it &amp; watch the logs</a>
+      <a href="#break">Break it / observe it</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#challenges">Challenges &amp; Questions</a>
+    </nav>
+    <div class="toc-bottom">
+      <a href="../phase-00-tools-of-the-trade/lesson.html">← Prev: Phase 00</a>
+    </div>
+  </div>
+</aside>
+
+<main>
+
+<header class="lesson">
+  <p class="kicker">LinkBoard · Part I — Bedrock</p>
+  <h1>Phase 01 — How a Computer Actually Works</h1>
+  <p class="covers"><strong>Covers:</strong> M6 (Computers) and M7 (Operating Systems). <strong>You need:</strong> WSL (Ubuntu) from Phase 0, and nothing else — every demo uses plain Python 3, which Ubuntu already has. <strong>Where the demos live:</strong> <code>concepts/phase-01-how-a-computer-works/playground/</code></p>
+</header>
+
+<h2 id="why">Why this phase exists</h2>
+
+<p>Everything we build in this course — web servers, databases, caches, queues — runs on the same physical machine parts: a processor, some memory chips, and a storage device, all supervised by a program called the operating system.</p>
+
+<p>If you understand what those parts are good at and bad at, then system design stops being a list of memorized rules. "Use a cache" stops being a rule and becomes obvious: <em>of course</em> you keep popular data in the fast memory instead of the slow one. "Databases write to a log first" stops being trivia and becomes obvious: <em>of course</em> they do — writing to the end of a file is the one thing disks are great at.</p>
+
+<p>So in this phase we go all the way down to the bottom, then climb back up:</p>
+
+<ol>
+  <li><strong>Part A</strong> — Bits and bytes: the only two symbols a computer knows.</li>
+  <li><strong>Part B</strong> — The CPU, and the staircase of memory speeds.</li>
+  <li><strong>Part C</strong> — RAM vs disk, and a race you can run yourself.</li>
+  <li><strong>Part D</strong> — How your Python code becomes something a CPU can run.</li>
+  <li><strong>Part E</strong> — Processes: programs as private apartments.</li>
+  <li><strong>Part F</strong> — Threads: roommates who share everything, including bugs.</li>
+  <li><strong>Part G</strong> — The kernel: the building superintendent.</li>
+  <li><strong>Part H</strong> — Blocking I/O: the most important idea for understanding servers.</li>
+</ol>
+
+<p>Each part ends with things to run and watch. Take your time. There is no schedule and no quiz.</p>
+
+<h2 id="pa">Part A — Bits and bytes: why computers only know two symbols</h2>
+
+<h3>The light switch</h3>
+
+<p>Start with something from your house: a light switch. It has exactly two positions. On, or off. There is no "slightly on."</p>
+
+<p>A computer chip is, at the bottom, billions of microscopic switches. Each switch is either letting electricity through, or not. Two states. That's the entire vocabulary of the machine: <strong>on</strong> or <strong>off</strong>.</p>
+
+<p>We write those two states as <strong>1</strong> (on) and <strong>0</strong> (off). One such switch — one single on-or-off value — is called a <strong>bit</strong>. That's the technical name; it's short for <em>binary digit</em>, where "binary" just means "two options."</p>
+
+<h3>Why only two? Why not ten?</h3>
+
+<p>Fair question — we humans use ten digits (0 through 9), so why don't chips?</p>
+
+<p>Because electricity in a real wire is messy. The voltage wobbles. If a chip had to distinguish ten different voltage levels to mean ten different digits, a small wobble would turn a 6 into a 7 and silently corrupt your data.</p>
+
+<p>With only two levels — "clearly high" and "clearly low" — the wobble doesn't matter. High-ish still reads as 1. Low-ish still reads as 0. Two symbols is the most mistake-proof alphabet possible, so that's the one hardware uses.</p>
+
+<h3>From switches to numbers</h3>
+
+<p>One bit can only say two things: 0 or 1. Not very expressive.</p>
+
+<p>But watch what happens when you line bits up. Two bits together can be in four different patterns: <code>00</code>, <code>01</code>, <code>10</code>, <code>11</code>. Three bits give eight patterns. Every bit you add <strong>doubles</strong> the number of patterns.</p>
+
+<p>Line up eight bits and you get 256 possible patterns (2 multiplied by itself 8 times). A group of eight bits has its own name: a <strong>byte</strong>. The byte is the basic unit computers use to measure data — the "gram" of the digital world.</p>
+
+<p>You already know the bigger units, even if you never thought about what they meant:</p>
+
+<table>
+  <tr><th>Unit</th><th>How big</th><th>Everyday example</th></tr>
+  <tr><td>1 byte</td><td>8 bits, 256 possible patterns</td><td>one letter of text (roughly)</td></tr>
+  <tr><td>1 kilobyte (KB)</td><td>~1,000 bytes</td><td>a paragraph of text</td></tr>
+  <tr><td>1 megabyte (MB)</td><td>~1,000,000 bytes</td><td>a small photo</td></tr>
+  <tr><td>1 gigabyte (GB)</td><td>~1,000,000,000 bytes</td><td>an hour of streamed video, roughly</td></tr>
+  <tr><td>1 terabyte (TB)</td><td>~1,000 GB</td><td>a big external drive</td></tr>
+</table>
+
+<h3>From numbers to <em>everything</em></h3>
+
+<p>Here is the trick that makes computers universal: <strong>everything is just an agreement about what the numbers mean.</strong></p>
+
+<p>Text? There's a public agreement (called <strong>ASCII</strong>, later extended into <strong>Unicode</strong>) that says: the number 65 means the letter <code>A</code>, 66 means <code>B</code>, 97 means lowercase <code>a</code>, and so on. Text is numbers plus that agreement.</p>
+
+<p>Images? Another agreement: split the picture into a grid of dots (pixels), and store three numbers per dot — how much red, green, and blue. An image is a long list of numbers plus that agreement.</p>
+
+<p>Sound, video, your Python code, this very lesson file — all of it is bytes, and the only thing that makes one file a "photo" and another a "song" is which agreement (which <strong>format</strong>) the program reading it applies.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — see the raw bytes of a real file</span>
+  <p>Open your WSL terminal and run these:</p>
+<pre><code><span class="c"># 1. Make a tiny file containing the word "Hi"</span>
+echo -n "Hi" &gt; /tmp/tiny.txt
+
+<span class="c"># 2. Show the actual bytes inside it, as numbers</span>
+xxd /tmp/tiny.txt</code></pre>
+  <p>You should see:</p>
+<pre><code>00000000: 4869                                     Hi</code></pre>
+  <p>Reading it: <code>48</code> and <code>69</code> are the two bytes in the file, written in a compact notation called hexadecimal (more on that in one second). Byte <code>48</code> in hexadecimal is the number 72 in normal decimal — and 72 is the ASCII agreement's number for capital <code>H</code>. Byte <code>69</code> hex is 105 decimal — lowercase <code>i</code>. Two bytes, two letters. The <code>Hi</code> on the right is <code>xxd</code> being helpful and applying the ASCII agreement for you.</p>
+  <p>Ask Python to confirm the agreement:</p>
+<pre><code>python3 -c "print(ord('H'), ord('i'))"</code></pre>
+  <p>Expected output: <code>72 105</code>. The <code>ord()</code> function just looks up a character's number in the agreement. That's all text is.</p>
+</div>
+
+<p><strong>About that "hexadecimal":</strong> writing long rows of bits like <code>01001000</code> is hard on human eyes, so programmers use base-16 (digits 0–9 then letters a–f) as a compact way to write bytes: one byte is always exactly two hex characters. It's purely a human convenience — the machine only ever has the bits. When you see things like <code>4869</code> or <code>0xFF</code> or a git commit hash like <code>39f2a8b</code>, you're looking at hexadecimal.</p>
+
+<h2 id="pb">Part B — The CPU and the staircase of memory speeds</h2>
+
+<h3>A very fast, very obedient, very dumb worker</h3>
+
+<p>The <strong>CPU</strong> (central processing unit, "the processor") is the part of the computer that actually <em>does</em> things. Everything else — memory, disk, network card — just stores or moves bytes. The CPU is the only part that computes.</p>
+
+<p>Picture a worker at a desk who can only do extremely simple tasks: add two numbers, compare two numbers, copy a number from one place to another. Each tiny task is called an <strong>instruction</strong>.</p>
+
+<p>What makes this worker useful is not intelligence — it's speed. A modern CPU executes on the order of <strong>billions of instructions per second</strong>. Your laptop's spec sheet says something like "3.2 GHz"; that's the <strong>clock speed</strong>, and it means the CPU's internal metronome ticks about 3.2 billion times per second, with (roughly) an instruction or more finished per tick.</p>
+
+<p>A <strong>core</strong> is one complete worker. Modern chips pack several: a "quad-core" CPU is four workers at four desks who can genuinely do four things at the same time. Keep that number in mind — it comes back when we talk about processes and threads.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — meet your own CPU</span>
+<pre><code>lscpu | head -15</code></pre>
+  <p>Look for two lines: <code>Model name</code> (your CPU's product name) and <code>CPU(s)</code> (how many workers you have — note this number, we'll use it later).</p>
+</div>
+
+<h3>The problem: the worker is faster than the warehouse</h3>
+
+<p>Here is the single most consequential fact in computer hardware:</p>
+
+<blockquote><p><strong>The CPU is much, much faster than the memory it reads from.</strong></p></blockquote>
+
+<p>The worker can finish a task in a nanosecond, but fetching the <em>materials</em> for the task from main memory takes about a hundred nanoseconds. A worker who needs materials every task and waits 100 times the task length for each delivery would sit idle 99% of the time.</p>
+
+<p>Hardware designers attacked this with a <em>staircase</em> of storage layers: each step down is bigger but slower. The CPU keeps the stuff it's using right now on the closest, fastest steps.</p>
+
+<p>Here's the staircase. To make the speeds feel real, the last column rescales everything so that one nanosecond becomes one second — as if you were the CPU, and one step of your work took one second:</p>
+
+<table>
+  <tr><th>Layer</th><th>What it is</th><th>Real latency (approx.)</th><th>Human scale (1 ns = 1 s)</th></tr>
+  <tr><td><strong>Registers</strong></td><td>A handful of slots inside the CPU itself</td><td>~0.3 ns</td><td>the papers in your hand</td></tr>
+  <tr><td><strong>L1 cache</strong></td><td>Tiny memory on the CPU core (~64 KB)</td><td>~1 ns</td><td>grabbing a note off your desk — 1 second</td></tr>
+  <tr><td><strong>L2 cache</strong></td><td>Bigger, slightly farther (~1 MB)</td><td>~4 ns</td><td>reaching a shelf behind you — 4 seconds</td></tr>
+  <tr><td><strong>L3 cache</strong></td><td>Shared between cores (~tens of MB)</td><td>~20 ns</td><td>walking to a cabinet across the room — 20 seconds</td></tr>
+  <tr><td><strong>RAM (main memory)</strong></td><td>The gigabytes your programs live in</td><td>~100 ns</td><td>walking to another building — 2 minutes</td></tr>
+  <tr><td><strong>SSD storage</strong></td><td>Your files, persistent</td><td>~100,000 ns (100 µs)</td><td>a delivery truck — about 1 day</td></tr>
+  <tr><td><strong>Spinning hard disk</strong></td><td>Older persistent storage</td><td>~10,000,000 ns (10 ms)</td><td>a cargo ship — about 4 months</td></tr>
+  <tr><td><strong>Network to another computer</strong></td><td>e.g., your server calls a database</td><td>~500,000–50,000,000 ns</td><td>weeks to <em>years</em>, depending on distance</td></tr>
+</table>
+
+<p>Sit with that table for a minute. On the human scale, asking RAM for data is a two-minute walk, asking the SSD is a full day's wait, and asking a spinning disk is <em>four months</em>.</p>
+
+<p>The word <strong>cache</strong> (pronounced "cash") will follow us through the entire course, so let's define it properly here, once:</p>
+
+<blockquote><p>A <strong>cache</strong> is a small, fast storage layer that keeps a <em>copy</em> of data from a bigger, slower layer, so that repeated requests for the same data can be answered fast.</p></blockquote>
+
+<p>Everyday version: the notepad by your phone where you copy the five phone numbers you actually call, so you don't dig through the full address book every time. The address book is still the truth; the notepad is just a fast copy of the popular part. (Where the analogy breaks: a real cache constantly and automatically evicts old entries to make room for new ones, and a copy can go <em>stale</em> if the original changes — staleness is a huge topic we hit head-on in Phase 8.)</p>
+
+<p>The CPU's L1/L2/L3 are hardware caches for RAM. Later, Redis (Phase 8) will be <em>our application's</em> cache for the database, and the design will rhyme perfectly with this staircase. Same idea, bigger scale.</p>
+
+<p>One more definition while we're here, because the table used it: <strong>latency</strong> means "how long you wait for one answer." It's the <em>length</em> of the pipe, not its width. (Width — how much data per second — is <strong>bandwidth</strong> or <strong>throughput</strong>; Phase 2 digs into the difference.)</p>
+
+<h2 id="pc">Part C — RAM vs storage, and the disk race</h2>
+
+<h3>The desk and the filing cabinet</h3>
+
+<p>Two of the staircase layers matter most for system design, so let's give them a closer look: <strong>RAM</strong> and <strong>disk</strong>.</p>
+
+<p><strong>RAM</strong> (random-access memory, "memory") is your desk. While a program runs, its variables, its code, the web page it's building — all of it sits in RAM. It's fast (the two-minute walk, which is fast <em>compared to the alternatives</em>) and reasonably big (your machine probably has 8–32 GB).</p>
+
+<p>RAM has one enormous catch: it's <strong>volatile</strong>, which is the technical word for <em>forgets everything when the power goes out</em>. Your desk gets swept completely clean every night.</p>
+
+<p><strong>Disk</strong> (storage — an SSD or hard drive) is the filing cabinet. It's huge (hundreds of GB or more) and <strong>persistent</strong> — files survive reboots and power cuts. But it is brutally slower than RAM: the day-long truck delivery, or the four-month cargo ship.</p>
+
+<p>Everything that must survive — your files, your database's data — has to live on disk. Everything that must be fast has to be in RAM. A gigantic share of system design is choreographing the dance between those two facts.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — see your desk and your cabinet</span>
+<pre><code>free -h     <span class="c"># RAM: 'total' = desk size, 'available' = free desk space</span>
+df -h /     <span class="c"># disk: size and usage of WSL's Linux drive</span></code></pre>
+  <p>(<code>-h</code> means "human-readable" — print <code>7.6G</code> instead of a raw byte count.)</p>
+</div>
+
+<h3>HDD vs SSD — and why <em>order of access</em> matters</h3>
+
+<p>There are two kinds of filing cabinet, and the difference between them reshaped system design.</p>
+
+<p>A <strong>hard disk drive (HDD)</strong> is mechanical: metal platters spin at thousands of revolutions per minute, and a read arm physically swings across them, like the needle on a record player. To read a piece of data, the arm must move to the right ring of the platter and then wait for the right sector to spin underneath it. That physical repositioning is called a <strong>seek</strong>, and it takes around 10 milliseconds — an eternity (four cargo-ship months on our human scale).</p>
+
+<p>A <strong>solid-state drive (SSD)</strong> has no moving parts at all — it's chips, like RAM, but persistent. No arm, no spinning, no mechanical seek. It's roughly a hundred times faster to reach a random piece of data.</p>
+
+<p>Now the key insight, and it applies to <strong>both</strong> kinds of drive:</p>
+
+<blockquote><p>Reading data <strong>in order, front to back (sequential access)</strong> is much faster than jumping around to scattered positions (<strong>random access</strong>).</p></blockquote>
+
+<p>On an HDD it's obvious why: sequential means the arm barely moves and data streams under it continuously; random means paying the 10 ms seek over and over. On an SSD the mechanical excuse is gone, but sequential still wins — big orderly reads let the drive and the operating system fetch large chunks in one request instead of thousands of tiny separate requests, each with its own fixed overhead. Think of a librarian fetching one shelf in a single armload versus fetching 65,000 books one trip at a time.</p>
+
+<p>This is why databases love append-only log files (Phase 6), why Kafka (Phase 11) is shockingly fast on cheap disks, and why "just add an index" (also Phase 6) is really about avoiding random hops through a giant file.</p>
+
+<p>You don't have to take my word for any of this — you have a disk. Let's race it.</p>
+
+<div class="demo">
+  <span class="label">🏁 Demo 1: disk_race.py</span>
+  <p>The script <code>playground/disk_race.py</code> does exactly one honest experiment:</p>
+  <ol>
+    <li>Creates a 256 MB file of random bytes in <code>/tmp</code> (which lives on WSL's fast internal Linux disk — not the slower Windows <code>/mnt/d</code> bridge).</li>
+    <li>Reads the whole file <strong>front to back</strong> in 4 KB pieces. Times it.</li>
+    <li>Reads the <strong>same number</strong> of 4 KB pieces from <strong>random positions</strong>. Times that.</li>
+    <li>Compares.</li>
+  </ol>
+  <p>There's a saboteur we have to handle first, though: Linux keeps recently read file data in spare RAM, in something called the <strong>page cache</strong> — a perfect real-life example of the cache concept from Part B. The <em>second</em> time anything reads our test file, the data comes straight from RAM and the disk never gets involved. Great for real life, terrible for a fair disk race. So the script politely asks the kernel to <em>forget</em> the file from RAM before each test. (And then the <code>--keep-cache</code> flag lets you re-run <em>with</em> the cache, to watch RAM crush the disk. Two lessons, one script.)</p>
+  <p>Full run instructions with expected output are in the <a href="#run">Run it &amp; watch the logs</a> section below.</p>
+</div>
+
+<h2 id="pd">Part D — From your code to the CPU</h2>
+
+<h3>The translation problem</h3>
+
+<p>Part B said the CPU only understands tiny instructions: add, compare, copy. Those instructions are, of course, bytes — patterns of bits the chip is wired to recognize. That byte language is called <strong>machine code</strong>, and it is the <em>only</em> language any CPU has ever executed.</p>
+
+<p>You write Python. Python is not machine code. So who translates?</p>
+
+<p>There are two big strategies, and the everyday analogy is translating a recipe book written in French for a cook who only reads English:</p>
+
+<p><strong>Strategy 1 — translate the whole book once (a <em>compiler</em>).</strong><br>
+Sit down, translate all of it, print an English edition. Slow to prepare, but afterwards the cook reads the English edition directly, at full speed, and the translator doesn't even need to be in the kitchen. Languages like C, C++, Go, and Rust work this way: a compiler program turns your source code into a finished file of machine code (on Windows, that's what an <code>.exe</code> is), and the CPU runs that file directly.</p>
+
+<p><strong>Strategy 2 — hire a live interpreter into the kitchen (an <em>interpreter</em>).</strong><br>
+No preparation: the interpreter stands next to the cook, reads each French line, and speaks the English aloud as they go. Cooking starts instantly, and if the recipe changes mid-meal, no problem. But every single line pays the translation cost every single time, and the interpreter must be present in the kitchen forever. Python works this way: the program <code>python3</code> <em>is</em> the interpreter, reading your <code>.py</code> file and doing what it says.</p>
+
+<p>That's the honest reason "Python is slower than C": not sloppiness, but a live interpreter in the kitchen versus a pre-printed translation.</p>
+
+<p>(Reality check, since you'll hear these terms: Python actually pre-chews your source into a compact internal form called <strong>bytecode</strong> first, and other languages like Java sit in clever hybrid territory. The two pure strategies above are the poles; real languages live between them.)</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — see Python's internal instructions</span>
+<pre><code>python3 -c "import dis; dis.dis(lambda: 1 + 2)"</code></pre>
+  <p>You'll see a tiny table of instructions like <code>RETURN_CONST</code> or <code>LOAD_CONST</code> — that's Python's bytecode for "produce the number 3." You just looked one level beneath your own code. (The exact instruction names vary by Python version; the point is that the table exists.)</p>
+</div>
+
+<h3>And why should a <em>system designer</em> care?</h3>
+
+<p>Because this explains a pattern you'll see all course long: <strong>Python will never be the fastest at raw computation, and it will almost never matter.</strong> Our web app will spend its life <em>waiting</em> — for the database, for the disk, for the network (remember the staircase: those are the day-long and month-long waits). Shaving nanoseconds off computation while waiting months for I/O is polishing the doorknob of a house that's on fire. Where raw CPU speed does matter (databases themselves, Kafka's internals), you'll notice those systems are written in C, C++, or Java — now you know why.</p>
+
+<h2 id="pe">Part E — Processes: programs as private apartments</h2>
+
+<h3>From "a file of code" to "a running thing"</h3>
+
+<p>A program sitting on disk — <code>python3</code>, or your script — is just bytes. Inert. A recipe in a drawer.</p>
+
+<p>When you <em>run</em> it, the operating system creates a <strong>process</strong>: a live, running instance of the program, with everything it needs to execute:</p>
+
+<ul>
+  <li>its own slice of RAM (for its variables and data),</li>
+  <li>an ID number — the <strong>PID</strong> (process ID) — so the OS can track it,</li>
+  <li>bookkeeping: which files it has open, who its parent is, how much CPU it has used.</li>
+</ul>
+
+<p>The analogy that will carry us through two phases: <strong>a process is an apartment.</strong> It has its own private rooms (memory), its own address, its own front door. One building (your computer) holds many apartments. And crucially: <strong>no apartment can see inside another.</strong> Your browser cannot read your terminal's variables. This isolation is enforced by the OS and the hardware together, and it's <em>why</em> your whole computer doesn't crash when one app does — the wreckage stays inside one apartment.</p>
+
+<p>Run the same program twice and you get two separate processes — two apartments that happen to have identical furniture. Same recipe, two cakes.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — count your apartments</span>
+<pre><code>ps -e | wc -l    <span class="c"># roughly how many processes exist right now</span>
+ps -f -u $USER   <span class="c"># full detail on YOURS: note the PID and PPID columns</span></code></pre>
+  <p>Even an idle machine has dozens or hundreds of processes. In the second command, <strong>PPID</strong> means <em>parent</em> process ID — because every process is created <em>by</em> another process. Your shell created <code>ps</code> itself just to run that command (and <code>ps</code> died immediately after — processes can be very short-lived). It's family trees all the way up to PID 1, the first process the OS starts at boot, ancestor of everything.</p>
+</div>
+
+<div class="demo">
+  <span class="label">🏁 Demo 2: spawn_family.py</span>
+  <p><code>playground/spawn_family.py</code> makes the family tree real. The script becomes a parent and spawns three child processes (named alice, bob, and carol). The whole family then stays alive for about a minute, printing heartbeats — deliberately long enough for you to open a <strong>second terminal</strong> and inspect them from outside with <code>ps</code>, <code>pstree</code>, and <code>top</code>, like a landlord checking the building register.</p>
+  <p>It also proves the apartments are really private: parent and children each write a <em>different</em> value into a variable with the <em>same name</em>, and nobody's write ever affects anybody else. Hold that thought — Part F shows the exact opposite.</p>
+</div>
+
+<h3>Context switching: one chef, many dishes</h3>
+
+<p>Here's a puzzle from the numbers you've collected: <code>lscpu</code> said you have maybe 8 cores, but <code>ps -e</code> counted hundreds of processes. Hundreds of apartments, eight workers. How does everything seem to run at once?</p>
+
+<p><strong>It doesn't.</strong> The OS plays a shell game. Each core runs one process for a short slice of time (a few milliseconds), then the OS <strong>pauses it</strong>, saves its complete working state — every register, its exact position in the code, like photographing a chessboard mid-game — loads the saved state of a <em>different</em> process, and runs that one for a slice. This swap is called a <strong>context switch</strong>, and it happens thousands of times per second. The illusion of "everything at once" is just very fast turn-taking.</p>
+
+<p>Everyday version: one chef cooking six dishes by rotating between pans. Every rotation costs a little time — put down the knife, wash hands, reread the recipe, remember where you were. Context switches likewise aren't free: a few microseconds each, plus a sneakier cost — the CPU caches from Part B are full of the <em>old</em> process's data, useless to the new one, so the new process starts its turn with a cold desk.</p>
+
+<p>File this away: "too many things taking turns" is a real failure mode we'll meet again (it's part of why "just add more threads" stops working, Phase 9 territory).</p>
+
+<h2 id="pf">Part F — Threads: roommates who share everything</h2>
+
+<h3>Apartments vs roommates</h3>
+
+<p>Sometimes you want two flows of work that <em>cooperate closely</em> — share the same data, work on the same job. Two separate processes are awkward for this: private apartments mean any sharing requires formally mailing data between them.</p>
+
+<p>Enter the <strong>thread</strong>. A thread is a flow of execution <em>inside</em> a process. Every process has at least one thread (the "main" thread). It can start more. The defining property, and the entire reason threads exist:</p>
+
+<blockquote><p><strong>All threads in a process share that process's memory.</strong></p></blockquote>
+
+<p>Threads are <strong>roommates in one apartment</strong>. Same rooms, same fridge, same whiteboard on the wall. No mailing anything — roommate A writes on the whiteboard and roommate B just... sees it. Instantly. That's wonderfully convenient and fast.</p>
+
+<p>And it is the most dangerous convenience in programming.</p>
+
+<h3>The whiteboard disaster</h3>
+
+<p>Two roommates keep a shared tally on the whiteboard — say, money collected for rent. Currently it reads <strong>41</strong>. Both collect $1 at the same moment.</p>
+
+<ul>
+  <li>Roommate A looks at the board. Reads 41.</li>
+  <li>Roommate B looks at the board, <em>a split second later</em>. Also reads 41. (A hasn't written yet — A is still doing the math.)</li>
+  <li>A computes 41 + 1 = 42. Writes <strong>42</strong>.</li>
+  <li>B computes 41 + 1 = 42. Writes <strong>42</strong>.</li>
+</ul>
+
+<p>Two dollars were collected. The board went up by one. A dollar just <em>vanished</em> — no crash, no error, no smoke. The board simply lies now.</p>
+
+<p>This bug has a name: a <strong>race condition</strong> — the final result depends on the accidental <em>timing</em> of who read and wrote when. The nasty parts:</p>
+
+<ol>
+  <li><strong>It's invisible in the code.</strong> <code>counter = counter + 1</code> looks like one safe action. It's secretly three: read the value, add one, write it back. Any other thread can sneak in between those steps.</li>
+  <li><strong>It's intermittent.</strong> Most of the time the threads happen not to collide, everything works, and your tests pass. Then production traffic arrives, collisions start, and data quietly corrupts.</li>
+</ol>
+
+<p>This is the most important bug class in this course. In Phase 4, two simultaneous upvotes on a LinkBoard post will eat each other in exactly this way. In Phase 6, database transactions will slay it properly. Today you just get to <em>watch it happen</em>.</p>
+
+<div class="demo">
+  <span class="label">🏁 Demo 3: thread_garble.py</span>
+  <p><code>playground/thread_garble.py</code> stages the whiteboard disaster with real threads: two threads each add 1 to a shared counter 5,000 times. The correct final answer is 10,000.</p>
+  <p><strong>Round 1</strong> runs with no protection. You'll get some number <em>far</em> below 10,000 — thousands of increments silently destroyed. (One honesty note: the script inserts a deliberate micro-pause between each thread's read and write. Real code has no such pause, but the read-write gap always exists — it's just nanoseconds wide, so collisions are rare. Rare is <em>worse</em>: rare means "passes every test, fails on Black Friday." We widen the gap so you can watch the crime in seconds rather than wait weeks for it.)</p>
+  <p><strong>Round 2</strong> runs the same job with a <strong>lock</strong> (also called a <strong>mutex</strong>, for <em>mutual exclusion</em>) — the bathroom-door rule: one roommate inside at a time, everyone else waits at the door. Result: exactly 10,000, every time. Also: slower. Taking turns costs speed. <strong>Correct-but-slower versus fast-but-wrong</strong> is a tradeoff you will negotiate for the rest of this course, all the way up to distributed databases (Phase 15).</p>
+</div>
+
+<h3>Processes vs threads, side by side</h3>
+
+<table>
+  <tr><th></th><th>Processes</th><th>Threads</th></tr>
+  <tr><td>Analogy</td><td>separate apartments</td><td>roommates in one apartment</td></tr>
+  <tr><td>Memory</td><td>private — enforced by OS</td><td>shared — everything, always</td></tr>
+  <tr><td>If one crashes</td><td>others unaffected</td><td>usually takes the whole process down</td></tr>
+  <tr><td>Sharing data</td><td>explicit, awkward, safe-by-default</td><td>instant, effortless, dangerous-by-default</td></tr>
+  <tr><td>Cost to create</td><td>heavier</td><td>lighter</td></tr>
+</table>
+
+<p>(A Python-specific footnote you'll hear about eventually: CPython has a "Global Interpreter Lock" that stops two threads executing Python <em>computation</em> simultaneously. It does <strong>not</strong> prevent race conditions — you just proved that — and it doesn't hurt threads that spend their time <em>waiting</em>, which is our main use for them. We'll revisit it when it actually bites, in the server phases.)</p>
+
+<h2 id="pg">Part G — The kernel: the building superintendent</h2>
+
+<h3>Who's been doing all this, exactly?</h3>
+
+<p>Throughout this lesson someone has been quietly doing things: creating processes, pausing and resuming them, shuttling data between RAM and disk, keeping apartments private. That someone is the <strong>operating system</strong> — and its core, the part that holds all the real power, is called the <strong>kernel</strong>.</p>
+
+<p>The analogy that fits best: the kernel is the <strong>building superintendent</strong>. Tenants (processes) don't rewire electricity or cut new keys themselves — imagine the chaos if any tenant could. They <em>request</em> things from the superintendent, who holds the master keys and decides what's allowed.</p>
+
+<p>Concretely, the kernel is the only code on the machine with direct authority over hardware. It decides which process runs on which core (<strong>scheduling</strong>, the context-switch shell game), who gets memory, who may open which file, and it operates every device — disk, network card, keyboard — on the tenants' behalf.</p>
+
+<p>This power split is enforced <em>by the CPU itself</em>, which runs in one of two modes: <strong>kernel mode</strong> (all powers — only the kernel runs here) and <strong>user mode</strong> (restricted — everything else, including every program you've ever written). In user mode, the dangerous instructions simply don't work. It's not a convention; it's wiring.</p>
+
+<h3>System calls — the doorbell</h3>
+
+<p>So if your Python script can't touch the disk... how did <code>disk_race.py</code> read a file?</p>
+
+<p>It rang the doorbell. A <strong>system call</strong> ("syscall") is the formal mechanism by which a user-mode process asks the kernel to do something on its behalf. Your program prepares its request ("read 4096 bytes from this file"), triggers a special CPU instruction, the CPU flips into kernel mode <em>at a fixed, kernel-controlled entry point</em> (you can't jump into the middle of the super's office — you ring the bell and the super answers), the kernel checks permissions, does the work, and hands back the result as it returns you to user mode.</p>
+
+<p><strong>Every</strong> interaction with the world outside your process is a syscall. Reading files, sending network data, printing to the terminal, starting a process, even asking the time. A typical program is a thin layer of your logic wrapped around a torrent of syscalls — and you can watch the torrent:</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — spy on a program's syscalls</span>
+<pre><code>sudo apt install -y strace     <span class="c"># one-time install of the spy tool</span>
+strace -c ls /tmp</code></pre>
+  <p>The first command installs <code>strace</code>; the second runs plain old <code>ls</code> with the spy attached. After <code>ls</code>'s normal output you'll get a table: every syscall it made, how many times, how long they took. A boring one-line <code>ls</code> makes <em>dozens</em> of syscalls — <code>openat</code> (open a file/directory), <code>read</code>, <code>write</code> (that's it printing!), <code>close</code>, <code>mmap</code> (memory requests)...</p>
+  <p>For the full firehose, try <code>strace ls /tmp</code> (no <code>-c</code>) — every individual syscall, live. That's the true conversation between a program and the kernel. When a tool in a later phase feels mysterious, <code>strace</code> is how we'll de-mystify it.</p>
+</div>
+
+<h3>Virtual memory — the kindest lie in computing</h3>
+
+<p>One more superintendent trick, and it's a beautiful one.</p>
+
+<p>Every process believes it has a huge, continuous range of memory addresses all to itself, starting from zero. Alice's process uses "address 5000." So does Bob's. Same number — no conflict. How?</p>
+
+<p>Because both are being lied to. Those addresses are <strong>virtual</strong> — apartment room numbers, not warehouse coordinates. Every apartment has a "room 1," and no tenant ever knows or needs to know where their rooms physically sit. The kernel (with a dedicated helper circuit in the CPU) keeps a translation table per process — <em>this process's room 5000 = that physical RAM location</em> — and translates <strong>every single memory access</strong>, transparently.</p>
+
+<p>This one lie buys three huge wins:</p>
+
+<ol>
+  <li><strong>Isolation for free.</strong> Your addresses simply cannot <em>name</em> another process's memory — the translation table has no entry for it. The apartment privacy from Part E isn't politeness; it's this mechanism. And when a process uses a virtual address that maps to nothing? The kernel kills it with the infamous <strong>segmentation fault</strong> — the super catching a tenant trying a door that doesn't exist.</li>
+  <li><strong>Simplicity.</strong> Every program can be written as if it owns a clean, empty memory space. No program ever coordinates with any other.</li>
+  <li><strong>Flexibility.</strong> Memory is managed in fixed-size chunks called <strong>pages</strong> (typically 4 KB — the same 4 KB our disk demo used; it's the kernel's favorite unit). Pages a process hasn't touched lately can even be evicted to disk to free up RAM (<strong>swapping</strong>). Sounds clever — but remember the staircase: disk is the day-long truck. A machine forced to swap heavily slows to a crawl, thrashing. "The server is swapping" is ops-speak for <em>we're about to have a very bad day</em>; watching for it comes in Phase 16.</li>
+</ol>
+
+<p>And a two-sentence preview of <strong>file systems</strong>, the kernel's other great illusion: a disk is really just billions of numbered 4 KB-ish slots, and "files with names in folders" is a data structure the kernel maintains <em>on top of</em> those slots — a card catalog over a warehouse. That card catalog metaphor returns with force when we hit database indexes in Phase 6.</p>
+
+<h2 id="ph">Part H — Blocking I/O: the idea that explains web servers</h2>
+
+<h3>First, the letters: what is I/O?</h3>
+
+<p><strong>I/O</strong> stands for input/output — any time a program talks to the world outside its own memory. Reading a file is I/O. A network request is I/O. Printing to the terminal is I/O. (Each one, you now know, is a syscall.)</p>
+
+<p>Now put two facts you've already learned side by side:</p>
+
+<ul>
+  <li>CPU work happens in nanoseconds.</li>
+  <li>I/O takes microseconds (SSD), milliseconds (network)... on the human scale: days, months.</li>
+</ul>
+
+<p>So the defining feature of I/O is: <strong>the answer takes ages to arrive</strong> compared to computation. Which raises the question — what does your program <em>do</em> while the disk truck is driving?</p>
+
+<h3>It stops. That's blocking.</h3>
+
+<p>When your Python calls <code>f.read()</code> — a syscall — the kernel sees the data isn't ready yet, and it doesn't just leave your process spinning. It marks your process as <em>waiting</em>, takes it <strong>off the CPU entirely</strong>, and runs someone else (there are hundreds of other processes; the chef rotates to another pan). When the disk finally delivers, the kernel marks your process runnable again, and it resumes at the exact line it stopped.</p>
+
+<p>From the outside: your program hit <code>f.read()</code> and <strong>froze until the data arrived</strong>. That freeze is called <strong>blocking</strong>. The call <em>blocks</em>.</p>
+
+<p>Efficient for the machine as a whole — no CPU is wasted on waiting. But notice what it means for <em>your program</em>: while blocked, your program is doing <strong>nothing</strong>. Not "working slowly." Nothing.</p>
+
+<h3>The frozen waiter</h3>
+
+<p>Now the analogy this whole part is named for. Picture a restaurant with one waiter, run under a strange rule: after taking a table's order and handing it to the kitchen, the waiter must <strong>stand frozen at that table</strong> until the food comes out, then serve it — and only then may he approach the next table.</p>
+
+<p>Kitchen takes ten minutes per dish. Five tables. The fifth table waits nearly an hour <em>just to order</em>, while the waiter spends the whole hour standing perfectly still. The waiter isn't slow. The kitchen isn't even slow, really. The <em>rule</em> is the disaster: <strong>the waiting doesn't overlap.</strong></p>
+
+<p>That waiter is a naive web server. "Take request, wait for the database, respond, only then look at the next customer" — one slow request freezes every user behind it. In Phase 2 we will build exactly this server, on purpose, from raw sockets, and you will <em>be</em> the ignored customer. It's infuriating. It's also the founding problem of server architecture:</p>
+
+<ul>
+  <li><strong>Hire more waiters</strong> — a thread or process per customer (Phase 2's fix, and its limits in Phase 9).</li>
+  <li><strong>One brilliant unfrozen waiter</strong> who drops off orders and keeps moving, checking back when kitchen bells ring — <em>non-blocking, event-driven</em> I/O, the trick behind Node.js and Python's <code>asyncio</code> (properly explored when we hit real-time systems, Phase 14).</li>
+</ul>
+
+<p>Where the analogy breaks, one more time: a blocked process costs the machine almost nothing (the kernel runs other work meanwhile) — a frozen human waiter is pure waste. The waste in software is the <em>customers'</em> time, not the CPU's.</p>
+
+<div class="demo">
+  <span class="label">🏁 Demo 4: blocking_waiter.py</span>
+  <p><code>playground/blocking_waiter.py</code> makes you feel the arithmetic. It "fetches three web pages," each fetch being two seconds of pure blocked waiting.</p>
+  <ul>
+    <li><strong>Round 1 — one waiter:</strong> fetches them one after another. The waits stack up: <strong>~6 seconds</strong>.</li>
+    <li><strong>Round 2 — three waiters:</strong> one thread per fetch; all three block at the same time, all three finish together: <strong>~2 seconds</strong>.</li>
+  </ul>
+  <p>Same work, same CPU, three times faster — because the time was never being spent <em>on</em> the CPU. It was spent waiting, <strong>and waiting overlaps for free.</strong> Every timestamped log line shows you exactly which waits stacked and which overlapped. This is why threads help I/O-heavy programs even on a single-core machine — and this experiment is the seed of everything in Phases 2, 9, and 14.</p>
+</div>
+
+<h2 id="run">Run it &amp; watch the logs</h2>
+
+<p>All four demos, in recommended order. Run them <strong>inside WSL</strong>. Timings on your machine will differ from mine — what matters is the <em>shape</em> of each result, which I'll flag for each demo.</p>
+
+<p>First, get there and confirm Python exists:</p>
+
+<pre><code>cd /mnt/d/Projects/linkboard/concepts/phase-01-how-a-computer-works/playground
+python3 --version</code></pre>
+
+<p>Expect something like <code>Python 3.10.12</code> (3.8+ is fine). If instead you see <code>python3: command not found</code>: <code>sudo apt update &amp;&amp; sudo apt install -y python3</code>.</p>
+
+<h3>Demo 1 — the disk race</h3>
+
+<pre><code>python3 disk_race.py</code></pre>
+
+<p>What each step does: creates a 256 MB test file in <code>/tmp</code> (one-time, a few seconds), then times sequential reads vs random reads with the page cache flushed before each test.</p>
+
+<p>Expected output shape (your numbers WILL differ):</p>
+
+<pre><code>[DEMO] === Disk race: sequential vs random reads ===
+[DEMO] page cache will be flushed before each test — this is a real disk test
+[SETUP] creating test file /tmp/linkboard_disk_demo.bin (256 MB of random bytes)...
+[SETUP] done writing in 1.8 s
+[SEQ] asking the kernel to forget this file from RAM (cold cache)
+[SEQ] reading all 65,536 chunks of 4 KB, front to back...
+[SEQ] done: 256 MB in 0.31 s  (826 MB/s, 4.7 µs per chunk on average)
+[RANDOM] asking the kernel to forget this file from RAM (cold cache)
+[RANDOM] reading 65,536 chunks of 4 KB from random positions...
+[RANDOM] ...25% done (1.6 s so far)
+   ...
+[RANDOM] done: 256 MB in 6.40 s  (40 MB/s, 97.7 µs per chunk on average)
+<span class="hi">[RESULT] sequential:   0.31 s</span>
+<span class="hi">[RESULT] random:       6.40 s</span>
+<span class="hi">[RESULT] random access was 20.6x SLOWER — same file, same amount of data, only the ORDER changed</span></code></pre>
+
+<p><strong>What the lines prove:</strong></p>
+
+<ul>
+  <li><code>[SEQ] ... 826 MB/s</code> — front-to-back streaming at full drive speed.</li>
+  <li><code>[RANDOM] ... 97.7 µs per chunk</code> — look at that per-chunk number against the staircase table: ~100 µs is exactly the "SSD random access" step. You just measured the table's truth on your own hardware.</li>
+  <li>The <code>[RESULT]</code> ratio is the payload: <strong>identical data, identical total bytes — only the order changed</strong> — and it cost 20x. (Anything from ~5x to ~100x is a normal result depending on your drive.)</li>
+</ul>
+
+<p><strong>Failure signs:</strong> if random is <em>not</em> clearly slower, you're probably on a filesystem where the cache-flush hint doesn't work (e.g., you ran it from <code>/mnt/d</code> — but the file goes to <code>/tmp</code>, so this is unlikely) — tell me what you see. If you get a <code>MemoryError</code> or disk-full error, check <code>df -h /tmp</code>.</p>
+
+<p>Now the rematch with the page cache left ON:</p>
+
+<pre><code>python3 disk_race.py --keep-cache</code></pre>
+
+<p>The file's still warm in RAM from the previous run, so expect <strong>both</strong> tests dramatically faster and nearly <em>equal</em> — random loses its penalty entirely:</p>
+
+<pre><code>[SEQ]    done: 256 MB in 0.05 s  (5,120 MB/s, ...)
+[RANDOM] done: 256 MB in 0.08 s  (3,200 MB/s, ...)</code></pre>
+
+<p><strong>What this proves:</strong> in RAM, access order barely matters — "random access memory" is literally named for that. You've now personally measured <em>why caches exist</em>: same request, ~100x cheaper served from RAM. Hold this feeling until Phase 8 — Redis is this exact trick, applied to a database.</p>
+
+<p>Cleanup: <code>rm /tmp/linkboard_disk_demo.bin</code></p>
+
+<h3>Demo 2 — the process family</h3>
+
+<p>You'll want <strong>two terminals</strong> for this one. In terminal 1:</p>
+
+<pre><code>python3 spawn_family.py</code></pre>
+
+<p>Expected output shape:</p>
+
+<pre><code>[PARENT] (pid 4312) === Process family demo ===
+[PARENT] (pid 4312) I am the parent. MY parent (PPID) is 3990 — that's the shell you launched me from!
+[PARENT] (pid 4312) spawning 3 children; we'll all stay alive ~60 s
+[PARENT] (pid 4312) NOW: open a second terminal and run:  pstree -p 4312
+[PARENT] (pid 4312) spawned child 'alice' with pid 4313
+[PARENT] (pid 4312) spawned child 'bob' with pid 4314
+[PARENT] (pid 4312) spawned child 'carol' with pid 4315
+[CHILD] (pid 4313) hello, I am child 'alice' — my parent is pid 4312
+[CHILD] (pid 4313) I set secret = "alice's private value" in MY memory (nobody else sees this)
+   <span class="c">... heartbeats every ~10 s from each child ...</span>
+[CHILD] (pid 4313) 'alice' finished — exiting now. My PID will disappear from ps.
+[PARENT] (pid 4312) child 'alice' (pid 4313) has exited with code 0
+   ...
+<span class="hi">[PARENT] (pid 4312) my secret is still "the parent's value" — no child's write ever touched MY memory. Separate apartments confirmed.</span></code></pre>
+
+<p>While it runs (you have ~60 s), in <strong>terminal 2</strong>:</p>
+
+<pre><code>pstree -p &lt;the parent PID it printed&gt;   <span class="c"># e.g. pstree -p 4312</span>
+ps -f -u $USER | grep spawn_family
+top          <span class="c"># find the pythons; press 'q' to quit</span></code></pre>
+
+<p><strong>What this proves:</strong></p>
+
+<ul>
+  <li><code>pstree</code> draws <code>python3(4312)─┬─python3(4313)...</code> — the family tree is a real OS structure, not a metaphor.</li>
+  <li>In <code>ps -f</code>, the children's PPID column = the parent's PID. Bookkeeping, live.</li>
+  <li>In <code>top</code>, the processes sit near 0% CPU — <em>blocked</em> in <code>sleep</code>, off the CPU entirely. Part H, visible in a dashboard.</li>
+  <li>The <code>secret</code> lines: same variable name, four processes, four independent values. Private apartments, demonstrated.</li>
+</ul>
+
+<p><strong>Failure sign:</strong> <code>pstree: command not found</code> → <code>sudo apt install -y psmisc</code>.</p>
+
+<h3>Demo 3 — the race condition</h3>
+
+<pre><code>python3 thread_garble.py</code></pre>
+
+<p>Expected output shape:</p>
+
+<pre><code>[DEMO] === Shared-memory race condition demo ===
+[ROUND] --- ROUND 1: no lock (the race) ---
+[ROUND] two threads will each add 1 to a shared counter 5,000 times
+[ROUND] if nothing goes wrong, the counter should end at 10,000
+[THREAD-A] finished my 5,000 increments (unsafe)
+[THREAD-B] finished my 5,000 increments (unsafe)
+[ROUND] both threads done in 0.31 s — final counter: 5,127
+<span class="hi">[RESULT] expected 10,000 but got 5,127 — 4,873 increments VANISHED (49% lost!)</span>
+[RESULT] no crash, no error message — the updates are just gone. This is why race conditions are so feared.
+
+[ROUND] --- ROUND 2: with a lock (the fix) ---
+   ...
+[ROUND] both threads done in 0.52 s — final counter: 10,000
+<span class="hi">[RESULT] exactly 10,000, every single increment survived — the lock forced the threads to take turns</span>
+[RESULT] the price: taking turns is slower. Correctness costs something. ...</code></pre>
+
+<p><strong>What the lines prove:</strong></p>
+
+<ul>
+  <li>Round 1's final counter (any number well below 10,000 — often close to half) — thousands of read-modify-write collisions, each destroying an update. <strong>No error was raised at any point.</strong> The program "worked."</li>
+  <li>Round 2: exactly 10,000, every run, forever — mutual exclusion turns three fragile steps into one uninterruptible unit. Note the higher time: the corrupted version was <em>faster</em>. Wrong answers usually are.</li>
+</ul>
+
+<p>Run Round 1 a few times — the lost count changes every run. That non-repeatability is the signature of a race, and it's why they're hell to debug from bug reports: "it only fails sometimes" is this.</p>
+
+<h3>Demo 4 — the frozen waiter</h3>
+
+<pre><code>python3 blocking_waiter.py</code></pre>
+
+<p>Expected output shape (watch the timestamps — they're the whole story):</p>
+
+<pre><code>[ 0.00s] [ROUND-1] ONE waiter, three tables, one at a time:
+[ 0.00s] [FETCH] requesting 'homepage' — now BLOCKED waiting for the response (2 s of doing absolutely nothing)
+[ 2.00s] [FETCH] 'homepage' arrived! Unblocked, moving on.
+[ 2.00s] [FETCH] requesting 'top-links' — now BLOCKED ...
+[ 4.00s] [FETCH] 'top-links' arrived! ...
+[ 4.00s] [FETCH] requesting 'comments' — now BLOCKED ...
+[ 6.00s] [FETCH] 'comments' arrived! ...
+[ 6.01s] [ROUND-1] all three pages fetched in 6.01 s — the three 2-second waits ADDED UP (2+2+2)
+
+[ 0.00s] [ROUND-2] THREE waiters, one per table, all at once:
+[ 0.00s] [FETCH] requesting 'homepage' — now BLOCKED ...
+[ 0.00s] [FETCH] requesting 'top-links' — now BLOCKED ...
+[ 0.00s] [FETCH] requesting 'comments' — now BLOCKED ...
+[ 2.00s] [FETCH] 'homepage' arrived! ...
+[ 2.00s] [FETCH] 'top-links' arrived! ...
+[ 2.00s] [FETCH] 'comments' arrived! ...
+[ 2.01s] [ROUND-2] all three pages fetched in 2.01 s — the three waits OVERLAPPED
+
+<span class="hi">[RESULT] sequential 6.01 s  vs  threaded 2.01 s (3.0x faster)</span></code></pre>
+
+<p><strong>What the timestamps prove:</strong> Round 1's requests each start only when the previous one finishes — 0, 2, 4 — waits in single file. Round 2's all start at 0.00s and all land at 2.00s — three blocked threads waiting simultaneously, costing the CPU nothing. Waiting overlaps for free; that one sentence is the foundation of all server architecture, and Phase 2 builds directly on it.</p>
+
+<h2 id="break">Break it / observe it</h2>
+
+<p>Optional experiments — each one deepens a concept by poking it. Nothing here can damage anything.</p>
+
+<ol>
+  <li><strong>Break the ASCII agreement.</strong> Interpret a <em>binary</em> file as if it were text: <code>head -c 300 /usr/bin/ls | xxd</code> shows machine code bytes (this is Part D's compiled machine code, in the flesh — <code>ls</code> is a compiled program!). Now let the terminal misinterpret a text-adjacent slice: <code>head -c 64 /usr/bin/ls</code> prints garbage symbols. Same bytes, wrong agreement = nonsense. That's all "file corruption" or mojibake ever is.</li>
+  <li><strong>Cache-warm a grep.</strong> Pick a big-ish file and time the same search twice: <code>time grep -r "nonexistentword" /usr/share/doc &gt; /dev/null</code> — run it two times in a row. Second run is typically much faster: page cache again, no script needed. (<code>time</code> prefixed to any command reports how long it took — your new favorite tool.)</li>
+  <li><strong>Watch a context-switch counter.</strong> <code>grep ctxt /proc/$$/status</code> shows how many times your <em>shell</em> has been switched off the CPU (<code>$$</code> means "my shell's PID"; <code>/proc</code> is a fake folder where the kernel publishes its bookkeeping as readable files — the super's clipboard, public edition). Voluntary switches = it blocked (waiting for your keystrokes!); involuntary = the OS yanked it mid-slice. Run it, press enter a few times, run it again — watch voluntary climb.</li>
+  <li><strong>Make the race disappear.</strong> In <code>thread_garble.py</code>, delete the <code>time.sleep(0)</code> line in <code>unsafe_worker</code> and re-run. On modern Python, Round 1 may now come out <em>correct</em> (or nearly) every time — the collision window shrank from "always" to "almost never." <strong>The bug is still there.</strong> Sit with how terrifying that is: the identical bug, and every test now passes. (Put the line back after.)</li>
+  <li><strong>Strace the disk race.</strong> <code>strace -c python3 disk_race.py</code> — in the final table, find <code>pread64</code> with ~65k+ calls: every one of those was a doorbell ring to the kernel (Part G) for 4 KB of file (Part C). Two lesson parts, one table.</li>
+  <li><strong>Kill a child, orphan nothing.</strong> Start <code>spawn_family.py</code>, and from terminal 2, <code>kill &lt;alice's pid&gt;</code>. Alice dies instantly (her heartbeats stop); bob and carol keep beating, and the parent reports alice's exit code as negative (killed by signal). Apartments: one demolished, neighbors unharmed. Compare Phase 0's <code>kill</code> on the runaway — same tool, now you know what it's really doing.</li>
+</ol>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>New terms this phase, in plain words:</p>
+
+<ul>
+  <li><strong>Bit</strong> — one on/off value; the smallest unit of data. <strong>Byte</strong> — 8 bits.</li>
+  <li><strong>Binary / hexadecimal</strong> — writing numbers with 2 symbols (what hardware does) / with 16 (a compact human notation for bytes).</li>
+  <li><strong>ASCII / Unicode</strong> — the public agreements mapping numbers to characters.</li>
+  <li><strong>CPU / core / clock speed</strong> — the part that computes / one independent worker in it / how many billion ticks per second it runs at.</li>
+  <li><strong>Instruction / machine code</strong> — one primitive CPU operation / the raw byte language of instructions, the only language a CPU runs.</li>
+  <li><strong>Register</strong> — one of a handful of storage slots inside the CPU itself.</li>
+  <li><strong>Cache</strong> — a small fast layer keeping copies of popular data from a big slow layer. <strong>L1/L2/L3</strong> — the CPU's built-in caches. <strong>Page cache</strong> — the kernel's in-RAM cache of file data.</li>
+  <li><strong>Latency</strong> — how long one answer takes to come back.</li>
+  <li><strong>RAM</strong> — fast, volatile working memory. <strong>Volatile</strong> — erased at power loss. <strong>Persistent</strong> — survives power loss.</li>
+  <li><strong>HDD / SSD</strong> — mechanical spinning storage / chip-based storage. <strong>Seek</strong> — an HDD's physical repositioning to reach data.</li>
+  <li><strong>Sequential vs random access</strong> — reading in order vs jumping around; in order is drastically faster on disks.</li>
+  <li><strong>Compiler / interpreter / bytecode</strong> — translate the whole program ahead of time / translate line by line while running / a compact internal form interpreters pre-chew source into.</li>
+  <li><strong>Process / PID / PPID</strong> — a running instance of a program with private memory / its ID number / its parent's ID.</li>
+  <li><strong>Context switch / scheduling</strong> — the OS swapping which process a core runs / the OS's policy for those turns.</li>
+  <li><strong>Thread</strong> — a flow of execution inside a process; shares the process's memory with its sibling threads.</li>
+  <li><strong>Race condition</strong> — a bug where the result depends on accidental timing of concurrent reads/writes; intermittent and silent.</li>
+  <li><strong>Lock (mutex)</strong> — a take-turns mechanism: one thread at a time in a critical section.</li>
+  <li><strong>Kernel / user mode / kernel mode</strong> — the OS core with hardware authority / the restricted CPU mode everything else runs in / the all-powers mode only the kernel runs in.</li>
+  <li><strong>System call (syscall)</strong> — the doorbell: a user program's formal request for a kernel service.</li>
+  <li><strong>Virtual memory / page / swapping / segmentation fault</strong> — per-process fake addresses translated to real RAM / the 4 KB unit memory is managed in / evicting idle pages to disk / the kill a process gets for touching an unmapped address.</li>
+  <li><strong>I/O</strong> — any input/output: files, network, terminal.</li>
+  <li><strong>Blocking</strong> — a call that freezes your program until its result arrives, while the kernel runs others.</li>
+</ul>
+
+<h2 id="challenges">Challenges &amp; Questions</h2>
+
+<p>Totally optional, answers hidden — think first if you feel like it, or just reveal them.</p>
+
+<details>
+<summary><strong>Q1.</strong> Your phone has 8 GB of RAM and 256 GB of storage. Using this phase's analogies: which is the desk, which is the filing cabinet, and why does closing apps "free up memory" but not "free up space"?</summary>
+<p>RAM is the desk, storage is the filing cabinet. A running app's working data lives in RAM (on the desk); closing the app ends its process, and the kernel reclaims all its RAM — clearing the desk. But the app's <em>files</em> (the app itself, your photos, its saved data) live in storage and aren't touched by closing it — the cabinet stays full. "Free up space" means deleting files from the cabinet; "free up memory" means clearing desk space by ending processes. Two different resources, two different verbs.</p>
+</details>
+
+<details>
+<summary><strong>Q2.</strong> The staircase table says a network hop can cost milliseconds — months on the human scale. LinkBoard will eventually call a database over the network on every request. Using ONLY ideas from this lesson, guess two strategies to keep that from making every page slow. (You're allowed to invent — both real answers are hiding in this lesson.)</summary>
+<p>1. <strong>Cache the popular answers closer</strong> — keep copies of frequent query results in the app's own RAM or a nearby fast store, so repeat requests skip the network trip entirely. That's the cache concept (Part B), scaled up: it becomes Redis in Phase 8. 2. <strong>Overlap the waiting</strong> — a network call is blocking I/O; while one request waits on the database, the server should be working on <em>other</em> requests, exactly like Round 2 of <code>blocking_waiter.py</code>. That's threads/async, arriving in Phase 2. (Bonus third answer: send fewer/bigger requests instead of many tiny ones — the sequential-vs-random lesson in network form; that becomes the N+1 problem in Phase 6.)</p>
+</details>
+
+<details>
+<summary><strong>Q3.</strong> In <code>thread_garble.py</code>, the lock made Round 2 correct. Why not make the lesson simpler by having threads that <em>never share anything</em>? What would we lose? (Hint: Part E built exactly that.)</summary>
+<p>Threads that share nothing are... basically processes — that's the apartment model, and we have it (Part E, <code>spawn_family.py</code>). What sharing buys: instant, copy-free access to common data (one whiteboard instead of mailing letters between apartments) and cheap coordination on one job. Web servers, for example, want many workers sharing one pool of database connections and one in-memory cache. The whole tradeoff: processes = safe-but-awkward sharing, threads = effortless-but-dangerous sharing. Systems pick per situation, and lots of real servers use both at once (Phase 9's worker models).</p>
+</details>
+
+<details>
+<summary><strong>Q4.</strong> A friend says: "Python is interpreted, so a Python web app will feel slow to users; rewrite it in C++." Using the staircase and Part D, give the honest counterargument — and name one situation where the friend is right.</summary>
+<p>A web app's request time is dominated by I/O waits: network hops to the database (milliseconds — months on the human scale) dwarf the microseconds of extra interpreter overhead. Making computation 50x faster shaves a rounding error off a database-bound request; users can't feel it. The friend is right where work is genuinely CPU-bound: heavy number crunching, encoding video, the internals of a database or message broker itself — which is exactly why Postgres and Kafka aren't written in Python, while the apps <em>calling</em> them happily are.</p>
+</details>
+
+<details>
+<summary><strong>Q5.</strong> Experiment 4 removed the <code>sleep(0)</code> and the race "went away." Your team's tests all pass. Argue, in two sentences, why you'd still demand the lock before shipping — then say which future phase inherits this exact argument.</summary>
+<p>The read-modify-write gap still exists — it's merely nanoseconds wide, so collisions moved from "constant" to "rare," and rare collisions on a busy production server mean corrupting data occasionally and untraceably, which is strictly worse than failing loudly in tests. Correctness can't rest on lucky timing. Phase 6 inherits this argument verbatim: database transactions are the disciplined, industrial-strength version of "take the lock before the read-modify-write" (and Phase 4 will first show the bug live, in real HTTP traffic).</p>
+</details>
+
+<details>
+<summary><strong>Q6 (stretch).</strong> <code>strace -c ls</code> showed dozens of syscalls. Each syscall has overhead (mode switch, permission checks). Predict: for a program reading a 1 GB file, which is faster — 262,144 reads of 4 KB, or 1,024 reads of 1 MB? Connect your answer to BOTH the disk race and the sequential-access lesson.</summary>
+<p>The 1,024 big reads win. Same total bytes, but 256x fewer doorbell rings — each syscall's fixed overhead (mode switches, checks) is paid 1,024 times instead of 262,144. This is the sequential-vs-random insight in a second costume: <em>fixed per-request overhead makes many-small-requests lose to few-big-requests</em>, whether the overhead is a disk seek, a syscall, or (coming soon) a network round-trip. Recognizing that same shape in new costumes is half of system design — you'll spot it in HTTP connection reuse (Phase 3), the N+1 query problem (Phase 6), and message batching in Kafka (Phase 11).</p>
+</details>
+
+<footer class="next">
+  <span class="label">Next phase</span>
+  <p><strong>Phase 02 — The Internet &amp; Protocols</strong>, where LinkBoard is finally born: we build an HTTP server out of raw sockets, no framework, and you watch one slow client freeze it — Part H, live, with real victims.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

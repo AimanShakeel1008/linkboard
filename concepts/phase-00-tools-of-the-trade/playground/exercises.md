@@ -153,4 +153,4 @@ watch LinkBoard's own logs while you click and curl. (`Ctrl+C` to stop.)
 
 ---
 
-Done? Head back to `lesson.md` Part E (the runaway process). 🎯
+Done? Head back to `lesson.html` — section 12, Part E (the runaway process). 🎯

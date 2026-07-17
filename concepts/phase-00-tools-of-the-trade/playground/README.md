@@ -1,8 +1,8 @@
 # Phase 0 Playground
 
 Small, disposable exercises for the Linux half of Phase 0. Everything here is
-driven by [../lesson.md](../lesson.md) — read that first; its "Run it & watch
-the logs" section tells you when to use each file.
+driven by `../lesson.html` (open it in your browser) — read that first; its
+"Run it & watch the logs" section tells you when to use each file.
 
 | File | Purpose |
 |---|---|

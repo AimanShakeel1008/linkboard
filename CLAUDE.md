@@ -7,7 +7,10 @@ The current state lives in `PROGRESS.md`. Follow every rule in this file.
 ## Repo structure
 - `curriculum.md`  = the full 27-phase plan (modules M1–M32 + AI). Never modify it without my approval.
 - `PROGRESS.md`    = single source of truth for where we are. Keep it updated.
-- `concepts/phase-NN-name/lesson.md` = the lesson for each phase.
+- `concepts/phase-NN-name/lesson.html` = the lesson for each phase (styled
+  HTML — see "LESSON FORMAT" below).
+- `concepts/assets/lesson.css` = the one shared stylesheet every lesson links
+  to, so all lessons look consistent.
 - `project/`       = the actual, evolving, always-runnable codebase.
 - `README.md`      = project overview + how to run it right now.
 
@@ -63,8 +66,31 @@ files ARE the memory.
    and "start these services" steps so my machine never runs everything at
    once. Record which services are expected to be running in PROGRESS.md.
 
+## LESSON FORMAT — HTML, one design for every lesson (decided 2026-07-17)
+Lessons are written as **standalone HTML pages** (`lesson.html`), NOT
+Markdown. Rules:
+1. One file per phase: `concepts/phase-NN-name/lesson.html`. No `lesson.md`
+   — a single source of truth per lesson, no duplicate formats.
+2. Every lesson links the shared stylesheet via
+   `<link rel="stylesheet" href="../assets/lesson.css">`. Design changes go
+   in that ONE css file, never inline per lesson, so all lessons stay
+   visually consistent.
+3. Use the established page skeleton and classes (see phase-00/phase-01
+   lesson.html as the reference): `.page` grid → `aside.toc` (sticky
+   contents + prev/next links) + `main` → `header.lesson` (`.kicker`, h1,
+   `.covers`), numbered `h2 id=` sections, callouts `.tryit` / `.note` /
+   `.warn` / `.demo` (each with a `.label` span), `pre` blocks with
+   `<span class="c">` for comments and `<span class="hi">` for key output
+   lines, `.chip` for "CS fundamental" flags, `<details>` for hidden
+   answers, `footer.next` for the next-phase teaser.
+4. Pages must work offline from `file://` — no external fonts, scripts, or
+   CDN anything. Escape `<`, `>`, `&` inside code samples.
+5. The lesson is opened in a normal browser (double-click the file). Light
+   and dark mode must both look right (the stylesheet handles this — just
+   don't hardcode colors in the HTML).
+
 ## Your job each phase — LESSON
-Write `concepts/phase-NN-name/lesson.md` containing:
+Write `concepts/phase-NN-name/lesson.html` (format above) containing:
 - The concepts, explained from absolute basics with everyday analogies.
 - Any CS fundamentals needed (no matter how basic), clearly flagged.
 - A walkthrough of the code you wrote, with key excerpts.

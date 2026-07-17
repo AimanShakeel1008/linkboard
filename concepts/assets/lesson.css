@@ -1,0 +1,490 @@
+/* ==========================================================================
+   LinkBoard course — shared lesson stylesheet
+   Every concepts/phase-NN-*/lesson.html links to this file (../assets/lesson.css)
+   so all lessons share one consistent design. Edit here, restyle everywhere.
+
+   Design language:
+   - warm paper background; HN-orange primary (LinkBoard is a Hacker News clone)
+     with teal + violet supporting hues
+   - gradient title banner; terminal-style code blocks with traffic-light dots
+   - sticky table of contents on wide screens
+   - automatic light/dark via prefers-color-scheme
+
+   NOTE: written with LITERAL colors only (no CSS custom properties) so it
+   renders correctly even in previews that don't support var(). Every
+   gradient is preceded by a solid-color fallback for the same reason.
+   Palette reference:
+     orange #e8590c   teal #0c8599   violet #7048e8   paper #faf7f2
+     ink #2a2c31      line #e7e1d6   terminal #171a21
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: #faf7f2;
+  color: #2a2c31;
+  font: 17px/1.75 "Segoe UI", ui-sans-serif, system-ui, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+::selection { background: #e8590c; color: #ffffff; }
+
+/* ---- page layout: sticky TOC + content ----------------------------------- */
+
+.page {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 47rem);
+  gap: 3rem;
+  max-width: 69rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 6rem;
+}
+
+main { min-width: 0; }
+
+.toc { font-size: .85rem; }
+
+.toc-inner {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 1.5rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding-right: .5rem;
+  animation: rise .55s ease-out .12s both;
+}
+
+main { animation: rise .6s ease-out .18s both; }
+
+.toc .toc-phase {
+  display: inline-block;
+  background: #e8590c;
+  background: linear-gradient(135deg, #ff922b 0%, #e8590c 60%, #7048e8 140%);
+  color: #fff8f0;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border-radius: 99px;
+  padding: .25rem .9rem;
+  margin: 0 0 .9rem;
+}
+
+.toc nav a {
+  display: block;
+  color: #6b7280;
+  text-decoration: none;
+  padding: .2rem 0 .2rem .75rem;
+  border-left: 2px solid #e7e1d6;
+  line-height: 1.45;
+  transition: padding-left .15s ease, color .15s ease;
+}
+
+.toc nav a:hover {
+  color: #e8590c;
+  border-left-color: #e8590c;
+  padding-left: 1rem;
+}
+
+.toc .toc-bottom {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e7e1d6;
+}
+
+.toc .toc-bottom a { border-left: none; padding-left: 0; font-weight: 650; color: #e8590c; }
+
+@media (max-width: 900px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding-top: 1.5rem; }
+  .toc-inner { position: static; max-height: none; }
+  .toc { border: 1px solid #e7e1d6; border-radius: 12px; padding: 1rem 1.25rem; background: #ffffff; }
+}
+
+/* ---- lesson header: the gradient banner ----------------------------------- */
+
+header.lesson {
+  background: #e8590c;
+  background: linear-gradient(135deg, #ff922b 0%, #e8590c 45%, #7048e8 130%);
+  background-size: 200% 200%;
+  color: #fff8f0;
+  border-radius: 16px;
+  padding: 2rem 2.2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 2px 8px rgba(60, 35, 10, .18);
+  /* rise in on load, then the gradient slowly drifts forever */
+  animation: rise .55s ease-out both, drift 18s ease-in-out infinite alternate;
+}
+
+.kicker {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #ffe0c2;
+  margin: 0 0 .5rem;
+}
+
+header.lesson h1 {
+  margin: 0 0 .9rem;
+  font-size: 2.2rem;
+  line-height: 1.15;
+  letter-spacing: -.015em;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+}
+
+.covers { margin: 0; font-size: .93rem; color: #ffeede; }
+.covers strong { color: #ffffff; }
+.covers code { background: rgba(255, 255, 255, .2); color: #ffffff; }
+header.lesson a { color: #ffffff; }
+
+/* ---- headings & text ------------------------------------------------------ */
+
+h2 {
+  font-size: 1.55rem;
+  line-height: 1.3;
+  margin: 3.2rem 0 1.1rem;
+  padding-bottom: .4rem;
+  border-bottom: 3px solid #e8590c;
+  color: #21242a;
+  scroll-margin-top: 1.5rem;
+  letter-spacing: -.01em;
+}
+
+h3 { font-size: 1.18rem; margin: 2.3rem 0 .75rem; color: #0c8599; scroll-margin-top: 1.5rem; }
+h4 { font-size: 1rem; margin: 1.8rem 0 .6rem; color: #7048e8; }
+
+h2 .secno {
+  display: inline-block;
+  background: #e8590c;
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: .05rem .55rem;
+  margin-right: .55rem;
+  vertical-align: .12em;
+}
+
+p, ul, ol { margin: 0 0 1rem; }
+li { margin-bottom: .35rem; }
+li > ul, li > ol { margin-top: .35rem; }
+
+a { color: #e8590c; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+a:hover { color: #7048e8; }
+
+strong { font-weight: 650; color: #1c1e22; }
+
+hr { border: none; border-top: 1px solid #e7e1d6; margin: 2.5rem 0; }
+
+/* the tag chip used for "CS fundamental" flags */
+.chip {
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #0c8599;
+  background: linear-gradient(120deg, #0c8599, #7048e8);
+  border-radius: 99px;
+  padding: .12rem .65rem;
+  vertical-align: .2em;
+}
+
+/* ---- code ----------------------------------------------------------------- */
+
+code, kbd {
+  font-family: "Cascadia Code", ui-monospace, Consolas, "SF Mono", Menlo, monospace;
+  font-size: .86em;
+}
+
+code {
+  background: #f6ede2;
+  color: #c2410c;
+  border-radius: 5px;
+  padding: .12em .38em;
+}
+
+pre {
+  position: relative;
+  background: #171a21;
+  color: #dde3ec;
+  border: 1px solid #2b3240;
+  border-radius: 12px;
+  padding: 2.5rem 1.2rem 1.1rem;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0 0 1.15rem;
+  box-shadow: 0 2px 6px rgba(60, 35, 10, .15);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+pre:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(60, 35, 10, .22);
+}
+
+/* macOS-style traffic lights: pure CSS, one dot + two shadows */
+pre::before {
+  content: "";
+  position: absolute;
+  top: .95rem;
+  left: 1.15rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff5f56;
+  box-shadow: 19px 0 0 #ffbd2e, 38px 0 0 #27c93f;
+}
+
+pre code { background: none; padding: 0; font-size: .84rem; color: #dde3ec; }
+
+/* comments inside code samples */
+pre .c { color: #8b96a5; font-style: italic; }
+/* highlighted/important line inside a block */
+pre .hi { color: #ffc078; font-weight: 600; }
+
+/* ---- callout boxes -------------------------------------------------------- */
+
+.tryit, .note, .warn, .demo {
+  border-radius: 12px;
+  padding: 1.1rem 1.3rem;
+  margin: 0 0 1.4rem;
+  box-shadow: 0 1px 4px rgba(60, 35, 10, .08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.tryit:hover, .note:hover, .warn:hover, .demo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 14px rgba(60, 35, 10, .14);
+}
+
+.tryit  { background: #ecf7ee; border-left: 5px solid #2f9e44; }
+.note   { background: #eef4fb; border-left: 5px solid #4c7db1; }
+.warn   { background: #fdf0ef; border-left: 5px solid #c0443a; }
+.demo   { background: #fff2e5; border-left: 5px solid #e8590c; }
+
+.tryit > .label, .note > .label, .warn > .label, .demo > .label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .45rem;
+}
+.tryit > .label { color: #2f9e44; }
+.note  > .label { color: #4c7db1; }
+.warn  > .label { color: #c0443a; }
+.demo  > .label { color: #e8590c; }
+
+.tryit :last-child, .note :last-child, .warn :last-child, .demo :last-child { margin-bottom: 0; }
+
+blockquote {
+  margin: 0 0 1.4rem;
+  padding: .9rem 1.4rem;
+  border-left: 5px solid #e8590c;
+  background: #ffefe3;
+  border-radius: 0 12px 12px 0;
+  font-weight: 560;
+  font-size: 1.03em;
+  color: #7c3007;
+}
+blockquote :last-child { margin-bottom: 0; }
+
+/* ---- tables ---------------------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  margin: 0 0 1.4rem;
+  font-size: .92rem;
+  display: block;           /* lets wide tables scroll instead of the page */
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+th, td {
+  border: 1px solid #e7e1d6;
+  padding: .5rem .8rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #fbe8d9;
+  color: #c2410c;
+  text-transform: uppercase;
+  font-size: .78rem;
+  letter-spacing: .05em;
+}
+
+tr:nth-child(even) { background: #f8f2e9; }
+tr:hover td { background: #fff0e0; transition: background .15s ease; }
+
+/* ---- collapsible answers (challenges) -------------------------------------- */
+
+details {
+  border: 1px solid #e7e1d6;
+  border-left: 5px solid #7048e8;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: .8rem 1.3rem;
+  margin: 0 0 1.4rem;
+  box-shadow: 0 1px 4px rgba(60, 35, 10, .08);
+}
+
+details summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: #7048e8;
+}
+
+details summary:hover { color: #e8590c; }
+details[open] summary { margin-bottom: .8rem; }
+details :last-child { margin-bottom: 0; }
+
+/* revealed answers fade + slide in gently */
+details[open] > *:not(summary) { animation: reveal .35s ease-out both; }
+
+/* ---- footer nav ------------------------------------------------------------ */
+
+footer.next {
+  margin-top: 4rem;
+  padding: 1.4rem 1.6rem;
+  border-radius: 12px;
+  background: #e8590c;
+  background: linear-gradient(135deg, #ff922b 0%, #e8590c 45%, #7048e8 130%);
+  background-size: 200% 200%;
+  color: #fff8f0;
+  box-shadow: 0 2px 8px rgba(60, 35, 10, .18);
+  animation: drift 18s ease-in-out infinite alternate;
+}
+footer.next .label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #ffe0c2;
+  margin-bottom: .35rem;
+}
+footer.next strong { color: #ffffff; }
+footer.next a { color: #ffffff; }
+footer.next code { background: rgba(255, 255, 255, .2); color: #ffffff; }
+footer.next :last-child { margin-bottom: 0; }
+
+/* ==========================================================================
+   DARK MODE — explicit literal overrides (no custom properties)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  body { background: #13151b; color: #d8dde5; }
+  ::selection { background: #ff9457; color: #1c1e22; }
+
+  .toc nav a { color: #8d95a3; border-left-color: #2b2f3a; }
+  .toc nav a:hover { color: #ff9457; border-left-color: #ff9457; }
+  .toc .toc-bottom { border-top-color: #2b2f3a; }
+  .toc .toc-bottom a { color: #ff9457; }
+  .toc .toc-phase {
+    background: #b34808;
+    background: linear-gradient(135deg, #b34808 0%, #8a3305 60%, #4b2e9e 140%);
+    color: #ffe9d9;
+  }
+
+  header.lesson {
+    background: #b34808;
+    background: linear-gradient(135deg, #b34808 0%, #8a3305 45%, #4b2e9e 130%);
+    color: #ffe9d9;
+    box-shadow: none;
+  }
+  .kicker { color: #ffc9a0; }
+  .covers { color: #ffdcc2; }
+
+  h2 { color: #e6eaf0; border-bottom-color: #ff9457; }
+  h3 { color: #3bc9db; }
+  h4 { color: #9775fa; }
+  h2 .secno { background: #ff9457; color: #24160c; }
+
+  a { color: #ff9457; }
+  a:hover { color: #9775fa; }
+  strong { color: #f0f3f7; }
+  hr { border-top-color: #2b2f3a; }
+
+  .chip { background: #0c8599; background: linear-gradient(120deg, #0c8599, #7048e8); }
+
+  code { background: #2a241c; color: #ffab73; }
+  pre { background: #0d1017; color: #d3dae4; border-color: #232a35; box-shadow: none; }
+  pre code { color: #d3dae4; }
+
+  .tryit, .note, .warn, .demo { box-shadow: none; }
+  .tryit { background: #14231a; }
+  .note  { background: #16202c; }
+  .warn  { background: #291717; }
+  .demo  { background: #271a10; }
+  .tryit > .label { color: #51b566; }
+  .note  > .label { color: #5b87b7; }
+  .warn  > .label { color: #c96157; }
+  .demo  > .label { color: #ff9457; }
+  .tryit { border-left-color: #51b566; }
+  .note  { border-left-color: #5b87b7; }
+  .warn  { border-left-color: #c96157; }
+  .demo  { border-left-color: #ff9457; }
+
+  blockquote { background: #2b1d12; border-left-color: #ff9457; color: #ffd3b3; }
+
+  th, td { border-color: #2b2f3a; }
+  th { background: #2a2118; color: #ff9457; }
+  tr:nth-child(even) { background: #171a21; }
+
+  details { background: #191c24; border-color: #2b2f3a; border-left-color: #9775fa; box-shadow: none; }
+  details summary { color: #9775fa; }
+  details summary:hover { color: #ff9457; }
+
+  footer.next {
+    background: #b34808;
+    background: linear-gradient(135deg, #b34808 0%, #8a3305 45%, #4b2e9e 130%);
+    color: #ffe9d9;
+    box-shadow: none;
+  }
+  footer.next .label { color: #ffc9a0; }
+
+  /* dark-mode versions of the hover effects */
+  tr:hover td { background: #241c12; }
+  pre:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, .5); }
+  .tryit:hover, .note:hover, .warn:hover, .demo:hover { box-shadow: 0 5px 14px rgba(0, 0, 0, .45); }
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   - "rise": one-time entrance for banner, TOC, and content on page load
+   - "drift": the banner/footer gradient slowly wandering, forever
+   - "reveal": answer content fading in when a <details> is opened
+   All of it is decorative — and switched off entirely for readers whose OS
+   asks for reduced motion.
+   ========================================================================== */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes drift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  html { scroll-behavior: auto; }
+}

@@ -16,16 +16,18 @@ basics.
 ## How to run it right now
 
 **There is no app to run yet.** The first runnable server arrives in Phase 2
-(an HTTP server built from raw sockets). Phase 0 is hands-on with the tools
-instead: the Linux & Git lesson and its practice playground live in
-[concepts/phase-00-tools-of-the-trade/lesson.md](concepts/phase-00-tools-of-the-trade/lesson.md)
-— all commands you need are in its "Run it & watch the logs" section.
+(an HTTP server built from raw sockets). Lessons are styled HTML pages —
+**open them in your browser** (double-click the file):
+
+- Phase 0 (done): `concepts/phase-00-tools-of-the-trade/lesson.html`
+- Phase 1 (current): `concepts/phase-01-how-a-computer-works/lesson.html` —
+  its four runnable demos live in that phase's `playground/` folder.
 
 ## Progress
 
 | Part | Phases | Status |
 |---|---|---|
-| I — Bedrock | 00 Linux & Git · 01 How computers work · 02 Internet & protocols · 03 HTTP | 🔨 Phase 00 in progress |
+| I — Bedrock | ✅ 00 Linux & Git · 01 How computers work · 02 Internet & protocols · 03 HTTP | 🔨 Phase 01 in progress |
 | II — Building LinkBoard | 04 APIs & REST · 05 Browser/frontend · 06 PostgreSQL · 07 Security & auth | ⬜ |
 | III — Scaling reads & ops | 08 Caching & Redis · 09 Docker, Nginx & scaling | ⬜ |
 | IV — Async & data systems | 10 RabbitMQ/SQS/SNS · 11 Kafka · 12 Elasticsearch · 13 MongoDB & NoSQL | ⬜ |
