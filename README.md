@@ -15,19 +15,30 @@ basics.
 
 ## How to run it right now
 
-**There is no app to run yet.** The first runnable server arrives in Phase 2
-(an HTTP server built from raw sockets), which is starting next. Lessons are
-styled HTML pages — **open them in your browser** (double-click the file):
+**LinkBoard is alive!** As of Phase 2 there's a real server to run — an HTTP
+server built from raw sockets. Inside WSL:
+
+```bash
+cd /mnt/d/Projects/linkboard/project
+python3 server.py            # http://localhost:8000 ; Ctrl+C to stop
+# in another terminal:
+curl -v localhost:8000       # the homepage, headers and all
+```
+
+Lessons are styled HTML pages — **open them in your browser** (double-click):
 
 - Phase 0 (done): `concepts/phase-00-tools-of-the-trade/lesson.html`
 - Phase 1 (done): `concepts/phase-01-how-a-computer-works/lesson.html` —
   its four runnable demos live in that phase's `playground/` folder.
+- Phase 2 (current): `concepts/phase-02-internet-and-protocols/lesson.html` —
+  walks through the server above and the "one slow client freezes everyone"
+  demo (`project/slow_client.py`).
 
 ## Progress
 
 | Part | Phases | Status |
 |---|---|---|
-| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · 02 Internet & protocols · 03 HTTP | 🔨 Phase 02 next |
+| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · 🔨 02 Internet & protocols · 03 HTTP | 🔨 Phase 02 in progress |
 | II — Building LinkBoard | 04 APIs & REST · 05 Browser/frontend · 06 PostgreSQL · 07 Security & auth | ⬜ |
 | III — Scaling reads & ops | 08 Caching & Redis · 09 Docker, Nginx & scaling | ⬜ |
 | IV — Async & data systems | 10 RabbitMQ/SQS/SNS · 11 Kafka · 12 Elasticsearch · 13 MongoDB & NoSQL | ⬜ |

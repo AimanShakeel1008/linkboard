@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 02 — The Internet &amp; Protocols</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="page">
+
+<aside class="toc">
+  <div class="toc-inner">
+    <p class="toc-phase">Phase 02</p>
+    <nav>
+      <a href="#why">Why this phase exists</a>
+      <a href="#pa">A. The internet vs the web</a>
+      <a href="#pb">B. Packets &amp; routers</a>
+      <a href="#pc">C. IP addresses &amp; ports</a>
+      <a href="#pd">D. DNS — the internet's phone book</a>
+      <a href="#pe">E. TCP vs UDP &amp; the handshake</a>
+      <a href="#pf">F. Bandwidth vs latency</a>
+      <a href="#pg">G. The layer cake (OSI)</a>
+      <a href="#ph">H. Firewalls, NAT &amp; VPNs</a>
+      <a href="#pi">I. The whole journey, end to end</a>
+      <a href="#code">The code we wrote</a>
+      <a href="#run">Run it &amp; watch the logs</a>
+      <a href="#break">Break it / observe it</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#challenges">Challenges &amp; Questions</a>
+    </nav>
+    <div class="toc-bottom">
+      <a href="../phase-01-how-a-computer-works/lesson.html">← Prev: Phase 01</a>
+    </div>
+  </div>
+</aside>
+
+<main>
+
+<header class="lesson">
+  <p class="kicker">LinkBoard · Part I — Bedrock</p>
+  <h1>Phase 02 — The Internet &amp; Protocols</h1>
+  <p class="covers"><strong>Covers:</strong> M1 (The Internet) and M2 (Protocols). <strong>You need:</strong> WSL (Ubuntu) from Phase 0, Python 3 (already installed), and the command-line tools <code>dig</code>, <code>curl</code>, and <code>ip</code> (we'll install any that are missing in one step). <strong>Where the code lives:</strong> this is the phase where LinkBoard is BORN — the first real code lands in <code>project/</code>: <code>server.py</code> and <code>slow_client.py</code>.</p>
+</header>
+
+<h2 id="why">Why this phase exists</h2>
+
+<p>In Phase 1 we stayed inside a single computer: one CPU, its memory, its disk, its operating system. But LinkBoard is a <em>website</em>. A website's whole purpose is to let a computer you've never met — someone's phone on the other side of the planet — ask your computer for a page and get it back.</p>
+
+<p>So we have to answer a question that sounds simple and absolutely is not: <strong>when you type an address and press enter, how do the right bytes travel to the right machine and come back?</strong></p>
+
+<p>The honest answer has a lot of moving parts, and this phase walks through every one of them from the bottom up. But here is the good news, and it's the same good news as last phase: none of it is magic. A web server is just a program that waits for bytes to arrive on a "socket," reads them, and writes bytes back. By the end of this phase you will have <em>built that program yourself</em>, from the rawest pieces the operating system offers, and watched real browser traffic flow through it in the logs.</p>
+
+<p>Here's the path:</p>
+
+<ol>
+  <li><strong>Part A</strong> — The internet vs the web (the roads vs the trucks on them).</li>
+  <li><strong>Part B</strong> — Packets and routers (your message, chopped into postcards).</li>
+  <li><strong>Part C</strong> — IP addresses and ports (the street address and the apartment number).</li>
+  <li><strong>Part D</strong> — DNS (turning a name a human can remember into an address a machine can use).</li>
+  <li><strong>Part E</strong> — TCP vs UDP, and the handshake that opens every connection.</li>
+  <li><strong>Part F</strong> — Bandwidth vs latency (the width of the pipe vs the length of the pipe).</li>
+  <li><strong>Part G</strong> — The layer cake: why we split all this into stacked layers.</li>
+  <li><strong>Part H</strong> — Firewalls, NAT, and VPNs: the gatekeepers and disguises.</li>
+  <li><strong>Part I</strong> — The whole journey, start to finish, tying every part together.</li>
+</ol>
+
+<p>Then we read the server we built line by line, run it, and break it on purpose.</p>
+
+<h2 id="pa">Part A — The internet vs the web: roads vs trucks</h2>
+
+<p>People use "the internet" and "the web" as if they mean the same thing. They don't, and keeping them separate is the first step to understanding either.</p>
+
+<p>Picture a country's <strong>road network</strong>: asphalt, intersections, traffic lights, on-ramps. The roads don't care what drives on them. Pizza-delivery scooters, moving vans, ambulances, tour buses — the road just carries whatever shows up.</p>
+
+<p>The <strong>internet</strong> is that road network. It is the physical-and-logical system of cables, radio links, and routing machines that can carry <em>any</em> kind of data between <em>any</em> two connected computers. It's just the roads.</p>
+
+<p>The <strong>web</strong> (short for World Wide Web) is one particular kind of traffic that drives on those roads: web pages, delivered using a specific set of rules called HTTP (which gets its own phase, Phase 3). The web is trucks of a certain brand. Other brands of truck use the same roads without ever touching the web: your email, a video call, a game's live updates, a file download, LinkBoard's future database traffic — all of these ride the internet, none of them are "the web."</p>
+
+<div class="note">
+  <span class="label">📝 So what</span>
+  <p>This distinction is why we can build LinkBoard's server on raw sockets — the bare road — and only <em>later</em> add HTTP, the specific traffic rules. The road came first. The traffic rules are an agreement layered on top, and you can pick different agreements for different jobs.</p>
+</div>
+
+<h3>What's a "protocol," then?</h3>
+
+<p>That word "agreement" is the whole idea of this phase, so let's name it. A <strong>protocol</strong> is a shared set of rules that two parties agree to follow so they can understand each other. That's it. It's not a piece of software or hardware — it's an agreement written down.</p>
+
+<p>You already use protocols constantly. A phone call has one: you say "hello," the other person says "hello," you take turns, and "goodbye" ends it. If someone ignored that protocol — picked up and said nothing, or never let you speak — communication would fail even though the phone line worked perfectly. The <em>line</em> is the internet; the <em>hello / take turns / goodbye</em> is the protocol.</p>
+
+<p>Everything in this phase is either a road (physical network) or a protocol (an agreement about how to use it): IP, TCP, UDP, DNS, HTTP — every one of those letters-soup names is the name of an agreement. Once you see them as "rules two computers promised to follow," the alphabet soup turns into a short, sensible list.</p>
+
+<h2 id="pb">Part B — Packets &amp; routers: your message becomes postcards</h2>
+
+<h3>Why not just send the whole thing at once?</h3>
+
+<p>Say you want to send a friend a long letter — a hundred pages. You could mail it as one enormous bound book. But if that single package gets lost, or damaged, or stuck behind a bigger package, the <em>whole</em> letter is gone or delayed. And while your huge book hogs the mail truck, nobody else's mail fits.</p>
+
+<p>The internet solves this the way you'd eventually think to solve it yourself: <strong>chop the message into small, equal-ish pieces and send each one separately.</strong> Each piece is called a <strong>packet</strong>. A packet is a small bundle of bytes — typically up to about 1,500 bytes — carrying a slice of your data plus a little header of bookkeeping (where it's going, where it came from, which slice number it is).</p>
+
+<p>When you load LinkBoard's homepage, the page doesn't arrive as one blob. It's sliced into many packets, each finds its own way across the world, and your computer reassembles them back into the original page in the right order. This happens for every image, every click, every everything.</p>
+
+<div class="note">
+  <span class="label">📝 Why slicing is genius</span>
+  <ul>
+    <li><strong>Sharing:</strong> many people's packets take turns on the same cable, interleaved — nobody's giant download blocks everyone else.</li>
+    <li><strong>Resilience:</strong> if one packet is lost, you re-send just that one small packet, not the whole file.</li>
+    <li><strong>Flexibility:</strong> different packets of the same message can travel different routes, whichever is clear at that instant.</li>
+  </ul>
+</div>
+
+<h3>Routers: the post offices of the internet</h3>
+
+<p>A packet has a destination written on it, but it has no idea <em>how</em> to get there — just like a postcard doesn't know the route, only the address. The devices that figure out the route are <strong>routers</strong>.</p>
+
+<p>A router is a specialized computer that sits at a junction between networks. Its entire job: a packet arrives on one of its wires, the router looks at the destination address, consults a table of "to reach addresses like <em>that</em>, send them out <em>this</em> wire toward a router that's closer," and forwards the packet one hop onward. Then it forgets about it and handles the next packet.</p>
+
+<p>No single router knows the whole path from you to LinkBoard's server. Each one only knows the <em>next best step</em>, like a chain of post offices each passing your postcard to the next office in roughly the right direction. A packet from your laptop might pass through ten to twenty routers on its way across the world, each one making a tiny "which way is closer?" decision. The astonishing part is that this decentralized, no-one's-in-charge, next-hop-at-a-time system reliably delivers trillions of packets a day.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — watch the chain of post offices</span>
+  <p>There's a tool that shows you the actual routers your packets hop through to reach a destination. In WSL:</p>
+<pre><code><span class="c"># Install it if needed (traceroute), then trace the path to a big site:</span>
+sudo apt install -y traceroute
+traceroute google.com</code></pre>
+  <p>Each numbered line is one hop — one router — with the time it took to reach it. You'll see the first hop is your own home router, then your internet provider's routers, then bigger backbone routers, then Google's. Some lines show <code>* * *</code> — that's a router choosing not to answer the probe (common and harmless). You are literally watching your postcard's route, office by office.</p>
+  <p>(Windows note: the same tool in plain Windows PowerShell is <code>tracert google.com</code>, if you'd rather see it from that side.)</p>
+</div>
+
+<h2 id="pc">Part C — IP addresses &amp; ports: the street address and the apartment</h2>
+
+<h3>The IP address: every machine's mailing address</h3>
+
+<p>For a packet to be delivered, the destination needs an address — a number every router understands. That number is an <strong>IP address</strong> (IP stands for Internet Protocol, the most fundamental agreement of all: "here is how we address and route packets").</p>
+
+<p>The kind you've probably seen looks like this: <code>142.250.72.14</code>. Four numbers, each from 0 to 255, separated by dots. This is <strong>IPv4</strong> (version 4). Each of those four numbers is one byte (remember Phase 1 — one byte holds 0 to 255), so an IPv4 address is exactly four bytes = 32 bits.</p>
+
+<p>Thirty-two bits gives about 4.3 billion possible addresses. In the 1980s that felt infinite. It isn't — there are more phones, laptops, servers, smart bulbs, and cars online than that. We ran out.</p>
+
+<h3>IPv6: the much bigger address book</h3>
+
+<p>The fix is <strong>IPv6</strong>, which uses 128 bits instead of 32. It looks alien the first time: <code>2001:0db8:85a3:0000:0000:8a2e:0370:7334</code> (eight groups of hexadecimal — Phase 1's base-16 notation, back again). How many addresses does 128 bits give? About 340 <em>undecillion</em> — a 39-digit number. Enough to give every grain of sand on Earth billions of addresses. We will not run out again. The world is slowly moving from IPv4 to IPv6; both run side by side today, which is why you see both forms.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — find your own machine's addresses</span>
+<pre><code><span class="c"># Show this machine's network interfaces and their IP addresses:</span>
+ip addr
+
+<span class="c"># Or just the IPv4 addresses, more compactly:</span>
+ip -4 addr show</code></pre>
+  <p>Look for a line like <code>inet 172.20.113.5/20</code>. That <code>172.20.x.x</code> (or <code>192.168.x.x</code>, or <code>10.x.x.x</code>) is a <strong>private</strong> address — it works only inside your home/WSL network, not on the public internet. Which raises a great question we answer in Part H: if your laptop's address is private, how does a reply from Google find its way back to you? (Answer: a trick called NAT.)</p>
+</div>
+
+<h3>DHCP: who handed out that address?</h3>
+
+<p>You never typed your laptop's IP address in by hand. When a device joins a network, it shouts a request — "does anyone here assign addresses? I need one" — and a server (usually built into your home router) answers, "yes, here, use <code>192.168.1.37</code> for the next few hours, and by the way here's the router to send everything through." That automatic handout system is <strong>DHCP</strong> (Dynamic Host Configuration Protocol). It's why joining WiFi "just works" without you configuring anything. Yet another protocol — an agreement about how to ask for and grant addresses.</p>
+
+<h3>Ports: which program on the machine?</h3>
+
+<p>An IP address gets a packet to the right <em>machine</em>. But a single machine runs many programs that all use the network at once: a browser, an email client, LinkBoard's server, a music stream. When a packet arrives, which program gets it?</p>
+
+<p>The answer is the <strong>port number</strong> — a second number, from 0 to 65535, that acts like an apartment number at a street address. The IP address is the building; the port is the specific apartment inside it. A full destination is written <code>IP:port</code>, for example <code>142.250.72.14:443</code>.</p>
+
+<p>Some port numbers are conventions everyone agrees on, so you don't have to be told them:</p>
+
+<table>
+  <tr><th>Port</th><th>Used for</th><th>Meaning</th></tr>
+  <tr><td>80</td><td>HTTP</td><td>ordinary (unencrypted) web traffic</td></tr>
+  <tr><td>443</td><td>HTTPS</td><td>encrypted web traffic (the padlock)</td></tr>
+  <tr><td>53</td><td>DNS</td><td>the phone-book lookups from Part D</td></tr>
+  <tr><td>22</td><td>SSH</td><td>secure remote login to another machine</td></tr>
+  <tr><td>5432</td><td>PostgreSQL</td><td>LinkBoard's future database (Phase 6)</td></tr>
+</table>
+
+<p>These "well-known" conventions are why <code>https://google.com</code> works without you ever typing a port: your browser assumes port 443 for <code>https</code>. When we run LinkBoard's server this phase, we'll put it on port <strong>8000</strong> — a high, unreserved number, because ports below 1024 require admin rights to claim (a safety rule so random programs can't impersonate the mail service on port 25).</p>
+
+<div class="chip">CS fundamental: addressing = which machine (IP) + which program (port). Almost every networked system you'll ever touch is reachable at some <code>host:port</code>.</div>
+
+<h2 id="pd">Part D — DNS: the internet's phone book</h2>
+
+<h3>The problem DNS solves</h3>
+
+<p>Machines find each other by IP address — cold numbers like <code>142.250.72.14</code>. But no human wants to memorize that to visit a site, and worse, those numbers <em>change</em>: a company can move its servers and get new IPs next week. We need a layer of human-friendly names that can point at whatever the current numbers happen to be.</p>
+
+<p>That layer is the <strong>Domain Name System</strong>, or <strong>DNS</strong>. It's the internet's phone book: you look up a name you can remember (<code>linkboard.example.com</code>) and it gives you back the current number (<code>142.250.72.14</code>) so your packets know where to go. The step of turning a name into an address is called <strong>resolving</strong> the name.</p>
+
+<h3>Why it's not one giant phone book</h3>
+
+<p>You might imagine one enormous file listing every website and its IP, copied to every computer. That could never work: there are hundreds of millions of domains, they change constantly, and a single list would be a single point of failure for the entire internet. So DNS is <strong>distributed and hierarchical</strong> — spread across many servers, organized like an address read right-to-left.</p>
+
+<p>Take the name <code>www.linkboard.example.com</code>. Read it backwards, biggest zone first:</p>
+
+<ol>
+  <li><strong>The root</strong> (the invisible dot at the very end — the internet's "operator"). The root doesn't know your site, but it knows who handles each top-level ending.</li>
+  <li><strong><code>.com</code> — the top-level domain (TLD).</strong> A set of servers responsible for all <code>.com</code> names. They don't know your specific site's address either, but they know who does: your domain's own name servers.</li>
+  <li><strong><code>example.com</code> — the authoritative server.</strong> This is the server that actually holds the real answer for anything under <code>example.com</code>. It says: "<code>www.linkboard.example.com</code>? That's <code>142.250.72.14</code>."</li>
+</ol>
+
+<p>It's exactly like finding a person by "Country → City → Street → House." No single office holds every address; each level just points you one step closer. The clerk who does the asking-around on your behalf — walking from root to TLD to authoritative — is called a <strong>resolver</strong>, and it's usually run by your internet provider or a public one like <code>8.8.8.8</code>.</p>
+
+<h3>The bit that makes it fast: caching &amp; TTL</h3>
+
+<p>If every single click required that full root → TLD → authoritative walk, the web would crawl. So every answer comes with a <strong>TTL</strong> (Time To Live) — a number of seconds the answer may be reused before it must be looked up fresh. During that window, your resolver (and your own computer, and your browser) just remember the answer. Look up <code>google.com</code> once and the next thousand visits skip the whole walk and use the cached number. When the TTL expires, the cache forgets it, and the next lookup does the full walk again — which is exactly how a site can move to a new IP and have the world notice within, say, five minutes.</p>
+
+<p>The simulation below lets you <em>be</em> the resolver: click through the chain once, then look the same name up again and watch the cache short-circuit the whole thing. That cache-hit-on-the-second-try is the entire point of TTL, and it's the same caching instinct from Phase 1 (keep popular answers close), now applied to names.</p>
+
+<div class="sim">
+  <p class="sim-hint">You are a DNS resolver. A program just asked you to resolve <strong>www.linkboard.example.com</strong>. Click <strong>Resolve the name</strong> and step through the chain. Then click it a <em>second</em> time and watch what the cache does. Use <strong>Advance the clock</strong> to expire the TTL and force a fresh walk.</p>
+  <div class="sim-controls" id="sim1-controls">
+    <button type="button" class="sim-btn go" id="sim1-resolve">Resolve the name</button>
+    <button type="button" class="sim-btn" id="sim1-clock">Advance the clock 60s</button>
+    <button type="button" class="sim-btn" id="sim1-reset">Reset (empty cache)</button>
+  </div>
+  <div class="sim-console" id="sim1-log" aria-live="polite"></div>
+  <p class="sim-note">This is a model of the mechanism, not a real resolver — real DNS has many more record types, retries, and layers of caching, and the walk happens in milliseconds. The real authority is <code>dig +trace www.google.com</code> in your own terminal, which shows the genuine root → TLD → authoritative walk against the live internet.</p>
+</div>
+<script>
+(function () {
+  var logEl = document.getElementById("sim1-log");
+  var cache, clock;
+  var TTL = 120; // seconds this model's answer stays cached
+  function init() {
+    cache = null;        // {ip, expiresAt} or null
+    clock = 0;
+    render(['<span class="skip">(cache is empty; clock = 0s. Click "Resolve the name".)</span>']);
+  }
+  function head() {
+    var c = cache
+      ? '<span class="ok">cached: www.linkboard.example.com → ' + cache.ip +
+        ' (expires at ' + cache.expiresAt + 's)</span>'
+      : '<span class="skip">cache: empty</span>';
+    return "clock = " + clock + "s   |   " + c + "\n\n";
+  }
+  function render(lines) {
+    logEl.innerHTML = head() + lines.join("\n");
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function resolve() {
+    var lines = [];
+    if (cache && clock < cache.expiresAt) {
+      lines.push('<span class="hi">CACHE HIT — answer is still fresh (TTL not expired).</span>');
+      lines.push("No walk needed. Return " + cache.ip + " immediately.");
+      lines.push('<span class="ok">→ This is why the 2nd, 3rd, 1000th visit is instant.</span>');
+      render(lines);
+      return;
+    }
+    if (cache && clock >= cache.expiresAt) {
+      lines.push('<span class="skip">Cache had an answer, but the clock (' + clock +
+                 's) passed its expiry (' + cache.expiresAt + 's) — TTL expired, must re-walk.</span>');
+    }
+    lines.push("Ask the ROOT: who handles “.com” names?");
+    lines.push('  <span class="skip">root:</span> I don’t know the site, but ask the .com TLD servers.');
+    lines.push("Ask the .com TLD: who is authoritative for example.com?");
+    lines.push('  <span class="skip">.com:</span> That’s example.com’s own name servers. Go there.');
+    lines.push("Ask example.com’s AUTHORITATIVE server: what is www.linkboard.example.com?");
+    lines.push('  <span class="ok">authoritative:</span> It is 142.250.72.14, with TTL ' + TTL + 's.');
+    cache = { ip: "142.250.72.14", expiresAt: clock + TTL };
+    lines.push('<span class="hi">→ Full walk complete. Answer cached until ' + cache.expiresAt +
+               's. Resolve again to see the cache hit.</span>');
+    render(lines);
+  }
+  function tick() {
+    clock += 60;
+    var lines;
+    if (cache && clock >= cache.expiresAt) {
+      lines = ['<span class="bad">Clock advanced to ' + clock +
+               's — the cached answer has now EXPIRED. The next resolve will do a full walk.</span>'];
+    } else if (cache) {
+      lines = ['<span class="skip">Clock advanced to ' + clock +
+               's — cached answer still fresh (expires at ' + cache.expiresAt + 's).</span>'];
+    } else {
+      lines = ['<span class="skip">Clock advanced to ' + clock + 's — cache is empty anyway.</span>'];
+    }
+    render(lines);
+  }
+  document.getElementById("sim1-resolve").addEventListener("click", resolve);
+  document.getElementById("sim1-clock").addEventListener("click", tick);
+  document.getElementById("sim1-reset").addEventListener("click", init);
+  init();
+})();
+</script>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — do a real DNS lookup, then watch the whole walk</span>
+<pre><code><span class="c"># Install the DNS tool if needed:</span>
+sudo apt install -y dnsutils
+
+<span class="c"># 1. A plain lookup: name in, IP address(es) out.</span>
+dig google.com +short
+
+<span class="c"># 2. The FULL walk — root, then TLD, then authoritative, printed step by step:</span>
+dig google.com +trace
+
+<span class="c"># 3. See the TTL (the number of seconds before "look me up again"):</span>
+dig google.com</code></pre>
+  <p>In the plain lookup you'll get one or more IP addresses. In <code>+trace</code> you'll see the query start at the root servers, get referred to the <code>.com</code> servers, and finally get the real answer from Google's own name servers — the simulation's three steps, but real. In the full <code>dig google.com</code> output, the <code>ANSWER SECTION</code> line has a number before the address (like <code>142.250.72.14</code> preceded by <code>212</code>) — that number is the TTL in seconds. Run the command again a few seconds later and watch that number tick <em>down</em>: that's your resolver's cache counting toward the moment it must re-ask.</p>
+</div>
+
+<h2 id="pe">Part E — TCP vs UDP, and the handshake</h2>
+
+<p>We can now find a machine (IP) and the right program on it (port), and turn a name into an address (DNS). But packets, by themselves, are unreliable postcards: some get lost, some arrive out of order, some arrive twice. Who cleans that up? This is where two more protocols — <strong>TCP</strong> and <strong>UDP</strong> — split the world in two, and choosing between them is one of the most important design decisions in all of networking.</p>
+
+<h3>TCP: certified mail with a tracking number</h3>
+
+<p><strong>TCP</strong> (Transmission Control Protocol) is the careful one. It takes the pile of unreliable packets and adds a layer of promises on top:</p>
+
+<ul>
+  <li><strong>Reliable:</strong> every packet is numbered; the receiver acknowledges each one. If an acknowledgment doesn't come back, the sender re-sends. Nothing is silently lost.</li>
+  <li><strong>Ordered:</strong> packets are reassembled in the original order, even if they arrived scrambled.</li>
+  <li><strong>Connection-based:</strong> the two sides formally open a connection before sending data and close it when done — like a phone call with a clear "hello" and "goodbye."</li>
+</ul>
+
+<p>The cost of all these promises is a little extra back-and-forth and a little delay. But for anything where <em>correctness matters more than shaving milliseconds</em> — loading a web page, sending an email, downloading a file, talking to a database — you want TCP. It's certified mail: slower, but it arrives complete, in order, guaranteed. <strong>LinkBoard uses TCP</strong>, and so does almost everything else you think of as "the web."</p>
+
+<h3>UDP: shouting across the room</h3>
+
+<p><strong>UDP</strong> (User Datagram Protocol) is the opposite philosophy: fire the packets and don't look back. No connection setup, no numbering, no acknowledgments, no re-sends, no ordering. If a packet's lost, it's just gone.</p>
+
+<p>Why would anyone want that? <strong>Speed and freshness.</strong> Think about a live video call. If one 20-millisecond sliver of audio gets lost, you do <em>not</em> want TCP to stop everything and re-send that stale sliver half a second later — by then the conversation has moved on. You'd rather drop it and keep up with the live moment. Live video, voice calls, online games, and (as it happens) DNS lookups all favor UDP: for them, a slightly-imperfect-but-current stream beats a perfect-but-late one. It's shouting across a room — fast, casual, and if one word is missed, oh well, keep going.</p>
+
+<div class="note">
+  <span class="label">📝 The one-line rule of thumb</span>
+  <p><strong>TCP when every byte must arrive correctly and in order</strong> (web, email, files, databases). <strong>UDP when being on-time beats being complete</strong> (live media, games, DNS). Neither is "better" — they're tools for different jobs, and the choice is a real system-design decision you'll make again and again.</p>
+</div>
+
+<h3>The TCP three-way handshake</h3>
+
+<p>Because TCP is connection-based, before a single byte of your actual request can flow, the two computers must formally agree to open a connection. They do it with a three-step ritual called the <strong>three-way handshake</strong>. Using the phone-call analogy:</p>
+
+<ol>
+  <li><strong>SYN</strong> — your computer to the server: "I'd like to start a conversation. Can you hear me?" (SYN is short for "synchronize.")</li>
+  <li><strong>SYN-ACK</strong> — the server back to you: "Yes, I hear you, and I'd like to talk too. Can you hear <em>me</em>?" (One message doing double duty: acknowledging yours and starting its own.)</li>
+  <li><strong>ACK</strong> — your computer to the server: "Yes, I hear you. We're connected." ("ACK" = acknowledge.)</li>
+</ol>
+
+<p>Three messages, and now a reliable, ordered connection exists in both directions. Only <em>then</em> does your browser send the actual <code>GET / HTTP/1.1</code> request. This is also why a network round-trip has a real cost you can't avoid: even before asking for anything, you've spent one full round-trip just saying hello. Remember Phase 1's staircase — a network hop is "months" on the human scale — and now you know part of why: TCP politely shakes hands first.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — watch a real handshake</span>
+  <p>The <code>-v</code> ("verbose") flag on <code>curl</code> narrates the connection setup. In WSL:</p>
+<pre><code>curl -v http://example.com 2&gt;&amp;1 | head -20</code></pre>
+  <p>Near the top you'll see a line like <code>* Trying 93.184.216.34:80...</code> — that's your computer picking the IP (from DNS) and reaching for port 80. The next <code>* Connected to example.com</code> line means the three-way handshake just completed successfully. Everything after that (<code>&gt; GET / HTTP/1.1</code>) is the actual request — which only happened <em>after</em> the handshake. You're seeing the exact order this section described.</p>
+</div>
+
+<h2 id="pf">Part F — Bandwidth vs latency: the width of the pipe vs its length</h2>
+
+<p>People say a connection is "fast" or "slow" as if speed were one thing. It's two, and confusing them leads to real design mistakes. Picture water flowing through a pipe.</p>
+
+<p><strong>Bandwidth</strong> is how <em>wide</em> the pipe is — how much data can flow per second once it's flowing. It's measured in bits per second (Mbps, Gbps). More bandwidth = more data at once. This is what "100 Mbps internet" advertises. Bandwidth is what matters for <em>big transfers</em>: downloading a movie, uploading a video. A wider pipe moves the bulk faster.</p>
+
+<p><strong>Latency</strong> is how <em>long</em> the pipe is — how many milliseconds it takes for one bit to travel from one end to the other and (usually) for a reply to come back (a "round-trip"). Latency is set mostly by physical distance and the number of router hops. This is what matters for <em>small, frequent, back-and-forth</em> exchanges: a game input, a keystroke in a remote terminal, or — critically for us — each little request to a database.</p>
+
+<div class="note">
+  <span class="label">📝 Why you can't fix latency with a bigger plan</span>
+  <p>Here's the trap. A server in Australia talking to a user in Germany has high latency no matter how much bandwidth either side buys, because the distance is fixed and light itself takes time to cross it (roughly 1 millisecond per 100 km, and that's the theoretical floor — reality is slower). Widening the pipe does nothing for a signal that simply has far to travel. This is why "just upgrade the connection" doesn't fix a laggy long-distance app, and why we put servers physically close to users (Phase 20's cloud regions and CDNs). It's also why making <em>many</em> tiny requests is so costly: each one pays the full latency toll again — the exact same "fixed per-request overhead" shape you met in Phase 1's disk race and syscall question, now wearing a network costume.</p>
+</div>
+
+<p>A concrete way to feel it: a transfer's total time is roughly <em>(latency to get started) + (amount of data ÷ bandwidth)</em>. For a huge file, the second term dominates and bandwidth is king. For a tiny 200-byte database reply, the second term is a rounding error and latency is everything. Great system design is largely the art of not paying latency more times than you have to.</p>
+
+<div class="tryit">
+  <span class="label">🖥️ Try it now — measure latency directly</span>
+<pre><code><span class="c"># ping sends tiny packets and times the round-trip — pure latency:</span>
+ping -c 5 google.com
+
+<span class="c"># Compare a far-away target (times will be larger):</span>
+ping -c 5 example.com</code></pre>
+  <p>Each line shows <code>time=14.2 ms</code> — that's the round-trip latency for one tiny packet. Notice the payload is only 64 bytes, so bandwidth is irrelevant here; you're measuring pure "length of the pipe." A nearby server might come back in single-digit milliseconds; one across an ocean in 150+ ms. Press Ctrl+C if you used a version without <code>-c 5</code> and it won't stop.</p>
+</div>
+
+<h2 id="pg">Part G — The layer cake: why we stack all these protocols</h2>
+
+<p>We've now met a pile of protocols — IP, TCP, UDP, DNS, HTTP — and it might feel like a jumble. It isn't. They're organized into <strong>layers</strong>, stacked so that each layer does one job and trusts the layer below it to handle the details. This is one of the most powerful ideas in all of engineering, so it's worth seeing clearly.</p>
+
+<h3>The postal analogy, layer by layer</h3>
+
+<p>Think about mailing a birthday card. You do several jobs, each at its own "layer," and you deliberately <em>don't</em> think about the others:</p>
+
+<ul>
+  <li><strong>You write the message</strong> ("Happy birthday!"). You care about the words, not the trucks.</li>
+  <li><strong>You put it in an envelope with an address.</strong> Now it's addressed, but you don't care which trucks carry it.</li>
+  <li><strong>The postal service routes it</strong> through sorting centers and trucks. They care about routing, not what the card says.</li>
+  <li><strong>Roads and vehicles physically move it.</strong> They don't even know it's mail.</li>
+</ul>
+
+<p>Each layer only talks to the one directly above and below it, through a clean handoff. The message-writer hands a sealed envelope to the post office; the post office hands bags to the trucks. Nobody needs to understand the whole system — and crucially, you can <em>change one layer without touching the others</em>. Switch from trucks to planes and the birthday message is unaffected. That independence is the entire payoff.</p>
+
+<h3>The internet's version</h3>
+
+<p>Networking uses this same stacked design. The formal teaching model is the <strong>OSI 7-layer model</strong>, but in practice the layers you'll actually name are these four, from top (closest to you) to bottom (closest to the wire):</p>
+
+<table>
+  <tr><th>Layer</th><th>Job</th><th>Examples</th><th>LinkBoard's version</th></tr>
+  <tr><td>Application</td><td>the actual conversation your program has</td><td>HTTP, DNS</td><td>"GET / HTTP/1.1" — Phase 3</td></tr>
+  <tr><td>Transport</td><td>reliable (or fast) delivery to the right program</td><td>TCP, UDP</td><td>TCP, via the socket we open</td></tr>
+  <tr><td>Internet</td><td>addressing &amp; routing packets machine-to-machine</td><td>IP</td><td>IP addresses &amp; routers, Parts B–C</td></tr>
+  <tr><td>Link</td><td>moving bits over one physical hop</td><td>WiFi, Ethernet</td><td>your WiFi to your router</td></tr>
+</table>
+
+<p>When LinkBoard sends a page, the data goes <em>down</em> the stack on the sender's side (HTTP wraps it, TCP wraps that, IP wraps that, WiFi sends the bits) and <em>up</em> the stack on the receiver's side (WiFi receives bits, IP unwraps to find the machine, TCP reassembles in order, HTTP hands the page to the browser). Each layer on the receiving end reads only the envelope its counterpart wrote. It's envelopes inside envelopes inside envelopes — the technical name for this wrapping is <strong>encapsulation</strong>.</p>
+
+<div class="chip">CS fundamental: layering / separation of concerns. Each layer solves one problem and hides its mess from the others, so any layer can be swapped without rewriting the rest. You'll see this same principle in software architecture (Phase 22), not just networks.</div>
+
+<div class="note">
+  <span class="label">📝 Where the socket sits</span>
+  <p>The <code>socket</code> we're about to program is your code's doorway to the transport layer (TCP). You hand a socket some bytes; TCP, IP, and the WiFi driver — all living inside the kernel (Phase 1's superintendent) — handle every layer below. That's why we can build a "web server" without ever writing a single line about routers or radio waves: the layers below the socket are somebody else's solved problem. You get to stand on top of decades of it.</p>
+</div>
+
+<h2 id="ph">Part H — Firewalls, NAT &amp; VPNs: gatekeepers and disguises</h2>
+
+<p>Three more pieces you'll bump into constantly. Each is easy once you have Parts A–G.</p>
+
+<h3>NAT: how a private address gets replies from the public internet</h3>
+
+<p>Back in Part C you found your machine has a <em>private</em> address (something like <code>192.168.1.37</code>) that doesn't exist on the public internet. So when you request LinkBoard, how does the reply find its way back to your specific laptop, behind your router, sharing one public address with every other device in your home?</p>
+
+<p>The trick is <strong>NAT</strong> (Network Address Translation), and your home router does it automatically. Think of your household having one public street address (the router's single public IP) while each family member has a private room number inside. When your laptop sends a packet out, the router rewrites the "from" address to its own public one, and writes down a note: "reply for this conversation → send back to laptop, room 37." When the reply arrives at the public address, the router checks its notes and forwards it to the right internal device. One public address, shared by a whole household of private ones, kept straight by the router's translation table. NAT is a big part of how the world limped along after IPv4 addresses ran out — many devices hiding behind one public address.</p>
+
+<h3>Firewalls: the bouncer with a guest list</h3>
+
+<p>A <strong>firewall</strong> is a filter that decides which network traffic is allowed through and which is blocked, based on rules. Picture a bouncer at a door with a guest list: "connections to port 443? Allowed. Connections to port 22 from outside the company? Denied." Firewalls run on individual machines (protecting one computer) and at network edges (protecting a whole network). They're why a fresh server in the cloud often <em>refuses</em> connections until you explicitly open the port you need — a wall that's closed by default is a safe wall. You'll meet this personally in Phase 9 and Phase 20, and probably curse it once before you love it.</p>
+
+<h3>VPNs: a private tunnel through public roads</h3>
+
+<p>A <strong>VPN</strong> (Virtual Private Network) makes two things happen at once. First, it builds an <strong>encrypted tunnel</strong> between your device and a VPN server: your traffic is scrambled so that anyone watching the public roads in between (a coffee-shop WiFi, your internet provider) sees only gibberish. Second, because your traffic <em>exits</em> to the wider internet from the VPN server, websites see the VPN server's address instead of yours — which is why a VPN can make you "appear" to be in another country. The roads are still the public internet; the VPN just wraps your trucks in an armored, address-swapping shell. It's a private conversation held in public — encryption (Phase 7's big topic) applied to the whole connection.</p>
+
+<h2 id="pi">Part I — The whole journey: what happens when you press enter</h2>
+
+<p>Time to assemble every part into one story. You type <code>http://linkboard.example.com</code> and press enter. Here is the complete relay race, and every runner is something you now understand:</p>
+
+<ol>
+  <li><strong>Name → address (DNS, Part D).</strong> Your computer needs an IP, not a name. It asks its resolver; if the answer isn't cached, the resolver walks root → <code>.com</code> → authoritative and comes back with <code>142.250.72.14</code>, plus a TTL saying how long to remember it.</li>
+  <li><strong>Open a connection (TCP handshake, Part E).</strong> Your computer sends a SYN to <code>142.250.72.14</code> on port 80; the server replies SYN-ACK; your computer sends ACK. A reliable, ordered connection now exists. This cost one round-trip (Part F's latency, spent before any real data).</li>
+  <li><strong>Ask for the page (HTTP — Phase 3).</strong> Over that connection your browser sends <code>GET / HTTP/1.1</code> plus a few headers. This is the application layer riding on top of everything below.</li>
+  <li><strong>Down the stack, across the world, up the stack (Parts B, C, G).</strong> The request is wrapped by TCP, then IP, then your WiFi; it's chopped into packets; routers hop it toward the destination; the far machine unwraps the layers back up and hands the request to the server program listening on that port.</li>
+  <li><strong>The server does its job (this is the code we wrote!).</strong> LinkBoard's server — sitting in <code>accept()</code>, blocked, waiting — wakes up, reads the request bytes, decides which page the path asks for, and builds a response.</li>
+  <li><strong>The response comes back the same way</strong> — packets, routers, layers — and your browser reassembles the page and renders it (rendering is Phase 5).</li>
+</ol>
+
+<p>Every phase from here builds on this skeleton. And the single step in bold — "the server wakes up, reads the request, builds a response" — is the thing we just wrote from scratch. Let's read it.</p>
+
+<h2 id="code">The code we wrote</h2>
+
+<p>Two files landed in <code>project/</code> this phase — the first real LinkBoard code:</p>
+
+<ul>
+  <li><code>project/server.py</code> — the raw-socket HTTP server.</li>
+  <li><code>project/slow_client.py</code> — a cruel client that proves the server's deliberate flaw.</li>
+</ul>
+
+<h3>The five system calls that are a web server</h3>
+
+<p>Strip away everything and a TCP server is five kernel requests (Phase 1's syscalls — the doorbell), always in this order. Here's the heart of <code>server.py</code>:</p>
+
+<pre><code><span class="c"># 1. socket(): ask the OS for a network endpoint (an unplugged phone).</span>
+<span class="c">#    AF_INET = IPv4 addresses; SOCK_STREAM = TCP (reliable, ordered).</span>
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+<span class="c"># SO_REUSEADDR: let us re-grab the port immediately after a restart,</span>
+<span class="c"># instead of waiting out TCP's ~30s TIME_WAIT cool-down.</span>
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+<span class="c"># 2. bind(): claim an address (all interfaces) and a port (8000).</span>
+server_socket.bind((HOST, PORT))
+
+<span class="c"># 3. listen(): start queueing incoming connections (hold up to 16 waiting).</span>
+server_socket.listen(16)
+
+while True:
+    <span class="c"># 4. accept(): BLOCK until a client finishes the 3-way handshake,</span>
+    <span class="c">#    then return a NEW socket dedicated to that one client.</span>
+    conn, addr = server_socket.accept()
+    handle_connection(conn, addr)   <span class="c"># read request, send response</span>
+    conn.close()                    <span class="c"># 5. close(): hang up.</span></code></pre>
+
+<p>That's the whole shape of every TCP server that has ever existed — Nginx, Postgres, your future LinkBoard at scale. Frameworks add convenience on top; this loop is always underneath. Notice <code>accept()</code> is exactly Phase 1's blocking I/O: the server sits there doing nothing, off the CPU entirely, until a connection wakes it.</p>
+
+<h3>Reading the request: bytes are a stream, not a message</h3>
+
+<p>The most important lesson hiding in the code is in how we <em>read</em>. A beginner expects "one recv() call gives me the whole request." TCP does not work that way. TCP hands you a <strong>stream of bytes with no built-in message boundaries</strong> — the request might arrive in one chunk or twenty, and you don't get to know in advance. So the server loops, collecting pieces, until it sees the blank line (<code>\r\n\r\n</code>) that HTTP uses to mark the end of the headers:</p>
+
+<pre><code>received = b""
+while b"\r\n\r\n" not in received:      <span class="c"># until we see "end of headers"</span>
+    chunk = conn.recv(1024)             <span class="c"># BLOCKS; may return 1 byte or 1000</span>
+    if chunk == b"":                    <span class="c"># empty = the client hung up</span>
+        return
+    received += chunk
+    log("RECV", f"got chunk of {len(chunk)} bytes ...")</code></pre>
+
+<p>Every loop iteration logs the chunk size — which is how <code>slow_client.py</code> makes its point visible: it sends the request one byte at a time, so you'll see the server dutifully log <code>[RECV] got chunk of 1 bytes</code> over and over, stuck, unable to serve anyone else. That's the deliberate flaw, and it's the whole reason the slow client exists.</p>
+
+<h3>Building the response: it's just text with a strict shape</h3>
+
+<p>An HTTP response is plain text: a status line, some <code>Label: value</code> headers, one blank line, then the page. The <code>build_response</code> helper assembles it and — crucially — encodes it to <strong>bytes</strong>, because sockets carry only bytes, never Python strings (Phase 1, Part A: text is numbers plus an agreement, and UTF-8 is the agreement):</p>
+
+<pre><code>headers = (
+    f"{status_line}\r\n"                            <span class="c"># "HTTP/1.1 200 OK"</span>
+    f"Content-Type: {content_type}; charset=utf-8\r\n"
+    f"Content-Length: {len(body_bytes)}\r\n"        <span class="c"># how many body bytes follow</span>
+    f"Connection: close\r\n"                         <span class="c"># "I'll hang up after this"</span>
+    f"\r\n"                                           <span class="c"># the sacred blank line</span>
+)
+return headers.encode("utf-8") + body_bytes</code></pre>
+
+<p>The <code>Content-Length</code> line matters more than it looks: it tells the client exactly how many body bytes to expect, so the client knows when the page is fully arrived instead of waiting forever for more. We'll parse requests and set status codes properly in Phase 3; for now the point is that a "response" is nothing but bytes in a shape both sides agreed on.</p>
+
+<h2 id="run">Run it &amp; watch the logs</h2>
+
+<p>Everything runs <strong>inside WSL</strong>. No installs needed for the server itself — it's pure Python standard library. You'll want <strong>two or three terminals</strong> open in the same folder.</p>
+
+<h3>Step 0 — get there</h3>
+
+<pre><code>cd /mnt/d/Projects/linkboard/project
+python3 --version    <span class="c"># expect Python 3.8+ ; 3.10.x is fine</span></code></pre>
+
+<h3>Step 1 — start the server</h3>
+
+<p>In <strong>terminal 1</strong>:</p>
+
+<pre><code>python3 server.py</code></pre>
+
+<p>Expected output — the server boots and then <em>blocks</em>, waiting:</p>
+
+<pre><code>12:00:00.100 [BOOT] === LinkBoard v0 — raw socket HTTP server ===
+12:00:00.101 [BOOT] one connection at a time, on purpose — see the file docstring
+12:00:00.103 [LISTEN] listening on 0.0.0.0:8000 — open http://localhost:8000 or: curl localhost:8000
+<span class="hi">12:00:00.104 [WAIT] blocked in accept() — doing absolutely nothing until someone connects</span></code></pre>
+
+<p><strong>What the last line proves:</strong> the server is now asleep in <code>accept()</code> — Phase 1's blocking I/O, live. It uses zero CPU while waiting. It will not print another thing until a client connects.</p>
+
+<h3>Step 2 — visit it</h3>
+
+<p>In <strong>terminal 2</strong>:</p>
+
+<pre><code><span class="c"># The homepage, with full connection + header narration:</span>
+curl -v localhost:8000
+
+<span class="c"># The about page (plain text):</span>
+curl localhost:8000/about
+
+<span class="c"># A page that doesn't exist (a 404):</span>
+curl -i localhost:8000/nope</code></pre>
+
+<p>The moment you run the first <code>curl</code>, <strong>terminal 1 bursts to life</strong>. Expected shape:</p>
+
+<pre><code>12:01:10.500 [CONN] #1 accepted connection from 127.0.0.1:52344
+12:01:10.501 [RECV] #1 got chunk of 78 bytes (total so far: 78)
+12:01:10.502 [HTTP] #1 parsed request line: method=GET path=/ version=HTTP/1.1 (read in 1 chunk(s))
+12:01:10.502 [HEADER] #1 Host: localhost:8000
+12:01:10.502 [HEADER] #1 User-Agent: curl/7.81.0
+<span class="hi">12:01:10.503 [ROUTE] #1 / -&gt; homepage with 4 links -&gt; 200</span>
+12:01:10.504 [SEND] #1 sent 612 bytes to 127.0.0.1:52344
+12:01:10.504 [CLOSE] #1 connection closed
+12:01:10.505 [WAIT] blocked in accept() — doing absolutely nothing until someone connects</code></pre>
+
+<p><strong>What each line proves:</strong></p>
+<ul>
+  <li><code>[CONN] accepted ... from 127.0.0.1:52344</code> — the three-way handshake (Part E) just completed; <code>127.0.0.1</code> is "this same machine" and <code>52344</code> is the random port your <code>curl</code> was given for its end.</li>
+  <li><code>[RECV] got chunk of 78 bytes</code> — <code>curl</code> sent its whole request in one burst, so one recv got it all (contrast the slow client next).</li>
+  <li><code>[HTTP] parsed request line: method=GET path=/</code> — the server pulled the method and path out of the raw text. This is the application layer (Part G), by hand.</li>
+  <li><code>[ROUTE] / -&gt; homepage</code> — the server decided which page the path earns.</li>
+  <li><code>[SEND] sent 612 bytes</code> then <code>[WAIT]</code> again — response delivered, connection closed, back to sleep. One full cycle.</li>
+</ul>
+
+<p>In terminal 2, <code>curl -v</code> shows you the <em>other</em> side of that same conversation: <code>* Connected to localhost</code> (handshake done), <code>&gt; GET / HTTP/1.1</code> (its request), <code>&lt; HTTP/1.1 200 OK</code> (our response), then the HTML. You are watching both ends of one TCP connection at once.</p>
+
+<p>Try the browser too: open <code>http://localhost:8000</code>. You'll see the styled list of links — and in terminal 1, often <em>several</em> connections in a row, because browsers fetch extras (like a favicon) and open spare connections. Some may show up as <code>[TIMEOUT]</code> lines — that's a browser opening a connection "just in case" and never speaking; our 5-second timeout hangs up on it. That's normal and the log says so.</p>
+
+<h3>Step 3 — the main event: one slow client freezes everyone</h3>
+
+<p>This is the payoff of the whole phase — Phase 1's blocking I/O, now hurting real users. You need <strong>three terminals</strong>. Terminal 1 still runs the server.</p>
+
+<p>In <strong>terminal 2</strong>, unleash the slow client:</p>
+
+<pre><code>python3 slow_client.py</code></pre>
+
+<p>It connects and starts dribbling its request one byte every 0.25 seconds, printing as it goes. In terminal 1 you'll see the server stuck receiving single bytes:</p>
+
+<pre><code>12:05:00.000 [CONN] #5 accepted connection from 127.0.0.1:52360
+12:05:00.001 [RECV] #5 got chunk of 1 bytes (total so far: 1)
+12:05:00.251 [RECV] #5 got chunk of 1 bytes (total so far: 2)
+12:05:00.502 [RECV] #5 got chunk of 1 bytes (total so far: 3)
+<span class="c">   ... one byte at a time, for ~14 seconds ...</span></code></pre>
+
+<p>Now, <strong>while that's still dribbling</strong>, go to <strong>terminal 3</strong> and make a perfectly normal, fast request:</p>
+
+<pre><code>curl localhost:8000</code></pre>
+
+<p><strong>Watch what happens: the curl in terminal 3 HANGS.</strong> It sits there, getting no response, no logs about it in terminal 1 — nothing — until the slow client in terminal 2 <em>completely finishes</em>. Only then does terminal 1 print <code>[CONN] #6</code> and serve terminal 3's request, and the hung curl suddenly completes.</p>
+
+<p><strong>What this proves — and why it's the whole point:</strong> our server handles exactly one connection at a time. It's stuck in <code>recv()</code> waiting on the slow client (blocking I/O, Part E of Phase 1), so it literally cannot reach the next <code>accept()</code> to notice terminal 3 knocking. One slow visitor froze the entire shop for everyone. This is not a bug in our code — it's the fundamental limitation of the single-connection design, and feeling it here is what makes every later scaling technique (threads, async, multiple processes, load balancers) <em>obviously necessary</em> instead of arbitrary. We keep the flaw this phase on purpose; we earn the fixes later.</p>
+
+<h3>Step 4 — stop the server</h3>
+
+<p>In terminal 1, press <strong>Ctrl+C</strong>. Expected:</p>
+
+<pre><code>^C
+12:10:00.000 [SHUTDOWN] Ctrl+C received — closing the listening socket. Bye.</code></pre>
+
+<h2 id="break">Break it / observe it</h2>
+
+<p>Optional experiments. Each one pokes a concept from this phase until you can see it move.</p>
+
+<ol>
+  <li><strong>Prove ports are apartments.</strong> With the server running on 8000, try <code>curl localhost:8001</code> (a port nobody's listening on). You get <code>Connection refused</code> instantly — the machine is there (the building exists) but no program is home in that apartment. Change <code>PORT = 8000</code> to <code>PORT = 9000</code> in <code>server.py</code>, restart, and now <code>curl localhost:9000</code> works while <code>8000</code> refuses. The address found the building; the port chose the room.</li>
+  <li><strong>See the stream have no message boundaries.</strong> In <code>slow_client.py</code>, lower <code>DELAY_BETWEEN_CHARS</code> to <code>0.01</code> and re-run. Now the server's <code>[RECV]</code> logs show chunks of several bytes at once instead of exactly 1 — the same request, "clumped" differently by TCP purely based on timing. Nothing in your code changed; TCP just handed the bytes over in different-sized handfuls. That's why we loop until <code>\r\n\r\n</code> instead of trusting one recv.</li>
+  <li><strong>Watch DNS caching with your own eyes.</strong> Run <code>dig google.com</code> twice in a row, quickly. Compare the TTL number in the <code>ANSWER SECTION</code> — the second run's is smaller. That number is your resolver's cache counting down; you're watching the exact mechanism the simulation modeled. Wait a minute and run again — it dropped further, or reset (a fresh walk) if it hit zero.</li>
+  <li><strong>Feel latency vs bandwidth.</strong> <code>ping -c 3 localhost</code> (times near <code>0.0 ms</code> — the pipe has no length, it's the same machine) versus <code>ping -c 3 google.com</code> (real milliseconds — real distance). Same tiny packets, wildly different latency, and bandwidth had nothing to do with either. Distance is the variable.</li>
+  <li><strong>Send raw HTTP by hand, no curl.</strong> With the server running: <code>printf 'GET /about HTTP/1.1\r\nHost: x\r\n\r\n' | nc localhost 8000</code> (install with <code>sudo apt install -y netcat-openbsd</code> if needed). <code>nc</code> ("netcat") just opens a TCP connection and pipes your bytes in raw. You typed HTTP with your own hands and got a real response — proving HTTP is just agreed-upon text over a socket, nothing more. (If <code>nc</code> hangs after the reply, that's it waiting for the server to close — Ctrl+C out.)</li>
+  <li><strong>Make the timeout fire on purpose.</strong> <code>nc localhost 8000</code> and then just... don't type anything. After 5 seconds the server logs a <code>[TIMEOUT]</code> line and hangs up on you, and <code>nc</code> exits. That's the <code>CLIENT_TIMEOUT_SECONDS</code> guard protecting the server from a silent connection holding a slot forever — a small taste of why real servers are paranoid about slow/idle clients.</li>
+</ol>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>New terms this phase, in plain words:</p>
+
+<ul>
+  <li><strong>Internet vs web</strong> — the physical/logical network that carries any data (the roads) vs one kind of traffic on it, web pages over HTTP (certain trucks).</li>
+  <li><strong>Protocol</strong> — a shared set of rules two parties follow so they can understand each other. Not software; an agreement.</li>
+  <li><strong>Packet</strong> — a small bundle of bytes (≈ up to 1,500) that a message is chopped into for sending; each carries a header with source, destination, and sequence info.</li>
+  <li><strong>Router</strong> — a machine at a network junction that reads a packet's destination and forwards it one hop closer, knowing only the next best step.</li>
+  <li><strong>IP address</strong> — a machine's numeric mailing address. <strong>IPv4</strong> = 32 bits (like <code>142.250.72.14</code>); <strong>IPv6</strong> = 128 bits (like <code>2001:db8::7334</code>), created because IPv4 ran out.</li>
+  <li><strong>Private vs public IP</strong> — an address that works only inside a local network (e.g. <code>192.168.x.x</code>) vs one reachable across the whole internet.</li>
+  <li><strong>DHCP</strong> — the system that automatically hands a device an IP address (and its router) when it joins a network.</li>
+  <li><strong>Port</strong> — a number (0–65535) identifying which program on a machine a packet is for; the apartment number to the IP's building. Well-known: 80 (HTTP), 443 (HTTPS), 53 (DNS), 22 (SSH).</li>
+  <li><strong>DNS</strong> — the internet's phone book: turns a human name into a machine IP. <strong>Resolver</strong> — the clerk that does the lookup for you. <strong>Root / TLD / authoritative</strong> — the three levels of the lookup hierarchy (operator → <code>.com</code> handler → the domain's own answer-holder). <strong>TTL</strong> — how many seconds an answer may be cached before re-looking-up.</li>
+  <li><strong>TCP</strong> — reliable, ordered, connection-based transport (certified mail). <strong>UDP</strong> — fast, connectionless, no guarantees (shouting across a room). <strong>Three-way handshake</strong> — the SYN / SYN-ACK / ACK ritual that opens every TCP connection.</li>
+  <li><strong>Bandwidth vs latency</strong> — how much data per second the pipe carries (its width) vs how long one bit takes to travel and return (its length). Bandwidth rules big transfers; latency rules small frequent ones and can't be bought away.</li>
+  <li><strong>OSI / layer model</strong> — the design that stacks protocols so each layer does one job and trusts the one below. Practical four: Application (HTTP), Transport (TCP/UDP), Internet (IP), Link (WiFi). <strong>Encapsulation</strong> — each layer wrapping the one above in its own envelope.</li>
+  <li><strong>Socket</strong> — your program's endpoint for network communication; the doorway to the transport layer the kernel manages for you.</li>
+  <li><strong>NAT</strong> — Network Address Translation: a router letting many private addresses share one public address by rewriting and tracking connections.</li>
+  <li><strong>Firewall</strong> — a filter that allows or blocks traffic by rule (the bouncer with a guest list).</li>
+  <li><strong>VPN</strong> — an encrypted tunnel that hides your traffic from onlookers and makes it exit from the VPN server's address.</li>
+</ul>
+
+<h2 id="challenges">Challenges &amp; Questions</h2>
+
+<p>Totally optional, answers hidden — think first if you feel like it, or just reveal them.</p>
+
+<details>
+<summary><strong>Q1.</strong> You unplug your router and plug it back in. For a few seconds, typing <code>google.com</code> fails, but pinging <code>8.8.8.8</code> (a raw IP) works immediately. Using this phase's parts, what's the most likely explanation?</summary>
+<p>Your machine reached the internet (IP-level connectivity is back — the raw IP ping proves routing works), but it can't yet turn <em>names</em> into addresses because its DNS resolver isn't reachable or configured yet — DHCP (Part C) hadn't finished handing your machine its resolver address after the reconnect. Names need DNS (Part D); raw IPs skip that whole step. Give DHCP a moment to finish and <code>google.com</code> starts working. This is a classic "the internet is up but DNS is down" situation, and now you can diagnose it precisely.</p>
+</details>
+
+<details>
+<summary><strong>Q2.</strong> A video-call app and a file-download app both run "over the internet." One should use TCP, the other UDP. Which is which, and what exactly would go wrong if you swapped them?</summary>
+<p>The file download wants <strong>TCP</strong>: every byte must arrive correctly and in order, or the file is corrupt — a slightly-late-but-perfect file is exactly right. The video call wants <strong>UDP</strong>: being on-time beats being complete, so a lost sliver of audio should be dropped, not re-sent stale. Swap them and both break in telling ways. A download over UDP could silently corrupt (missing/reordered chunks, no re-sends). A video call over TCP would <em>stutter and lag</em>: when a packet is lost, TCP halts the stream to re-send that now-useless old audio, so the call falls further and further behind live. The mismatch isn't "slower" — it's the wrong guarantee for the job (Part E).</p>
+</details>
+
+<details>
+<summary><strong>Q3.</strong> Our server logs <code>[RECV] got chunk of 1 bytes</code> many times for the slow client, but usually just one <code>[RECV]</code> for curl. Since both send the identical request, why the difference — and why does the server loop instead of calling <code>recv()</code> once?</summary>
+<p>TCP delivers a <em>stream</em> of bytes with no message boundaries (Part E, and the code walkthrough). How the stream gets split into recv-sized handfuls depends purely on <em>timing</em>: curl sends its whole request in one burst, so it's usually sitting in the kernel's buffer as one lump when we recv; the slow client feeds one byte every 0.25s, so each recv catches exactly one. Neither is "more correct" — TCP guarantees the bytes and their order, not their grouping. That's precisely why the server must loop until it sees the end-of-headers marker (<code>\r\n\r\n</code>) rather than trusting a single recv to hand over a whole request. Assuming "one recv = one message" is one of the most common networking bugs there is.</p>
+</details>
+
+<details>
+<summary><strong>Q4.</strong> Someone says: "DNS caching is dangerous — if a site moves to a new server, everyone with the old address cached will hit the dead one." Using TTL, explain why this is a managed, deliberate tradeoff rather than a flaw.</summary>
+<p>Every cached answer carries a TTL — a countdown after which it's discarded and re-looked-up (Part D). So a stale answer only lives for at most the TTL, then the world re-resolves and picks up the new address. Operators <em>choose</em> the TTL to trade speed against agility: a long TTL (hours) means fast repeat lookups but slow propagation when you move; a short TTL (a minute) means slightly more lookup traffic but near-instant propagation. Before a planned move, operators <em>lower</em> the TTL in advance so caches expire quickly during the switch, then raise it again afterward. It's a deliberate dial between "cheap and fast" and "nimble," not an accident — the same speed-vs-freshness tension you'll meet in every cache in this course (Redis, Phase 8).</p>
+</details>
+
+<details>
+<summary><strong>Q5.</strong> The three-way handshake costs one full round-trip before any data. LinkBoard will eventually make many requests to the same server. Using Part F's latency idea, guess a strategy real systems use to avoid paying that handshake toll over and over. (Both real answers are hinted at across this phase.)</summary>
+<p>1. <strong>Reuse the connection.</strong> Instead of a fresh handshake per request, keep the TCP connection open and send many requests over it — you pay the handshake round-trip once, then amortize it across everything that follows. This is exactly what HTTP "keep-alive" and connection pooling do (Phase 3 for HTTP, Phase 6 for database connection pools — where opening a connection per query is shown to be a disaster). 2. <strong>Put the server physically closer</strong> so each round-trip is cheaper in the first place — fewer kilometers, less latency (Part F; this becomes cloud regions and CDNs in Phase 20). Both are the same insight from a different Phase-1 costume: don't pay a fixed per-request cost more times than you have to.</p>
+</details>
+
+<details>
+<summary><strong>Q6 (stretch).</strong> Our server's flaw is that one slow client blocks all others. Before reading later phases, brainstorm three fundamentally different ways you <em>could</em> fix it — and note which Phase-1 idea each one leans on.</summary>
+<p>All three are real, and each is a future phase: <strong>(a) One thread per connection</strong> — hand each accepted connection to its own thread so a slow one blocks only itself, not the accept loop. Leans on Phase 1's threads (and inherits their shared-memory dangers). <strong>(b) One process per connection</strong> — same idea with processes instead of threads: safer isolation, heavier cost. Phase 1's processes. <strong>(c) One thread, but never block — ask the kernel "which of my many connections has data ready right now?" and only touch those</strong> (an "event loop" / async model). This leans hardest on Phase 1's blocking-vs-non-blocking I/O: instead of blocking on one client, you juggle thousands, working only on whichever is ready, like one waiter watching every table at once. Real servers mix these (a pool of processes, each running an event loop). You built the naive version; now you can appreciate exactly what each fix buys and costs. That appreciation — not the code — is the point.</p>
+</details>
+
+<footer class="next">
+  <span class="label">Next phase</span>
+  <p><strong>Phase 03 — HTTP Deep Dive</strong>, where we stop hand-waving at "GET / HTTP/1.1" and take the HTTP protocol apart properly: methods and idempotency, the status-code families, the headers that actually matter, cookies, and the TLS handshake that puts the padlock on. Our raw-socket server grows into a real hand-written HTTP parser — still no framework, still nothing magic.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
