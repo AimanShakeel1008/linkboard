@@ -481,6 +481,103 @@ footer.next :last-child { margin-bottom: 0; }
   to   { opacity: 1; transform: none; }
 }
 
+/* ==========================================================================
+   INTERACTIVE SIMULATIONS (.sim-*)
+   Reusable components for the small inline "click and watch the mechanism"
+   widgets some lessons embed (see CLAUDE.md → INTERACTIVE SIMULATIONS).
+   Literal colors only, dark overrides at the end of this section.
+   ========================================================================== */
+
+.sim {
+  border: 2px solid #7048e8;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1.2rem 1.4rem 1.1rem;
+  margin: 0 0 1.6rem;
+  box-shadow: 0 1px 4px rgba(60, 35, 10, .08);
+}
+
+/* automatic label — no markup needed */
+.sim::before {
+  content: "⚡ Interactive simulation";
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #7048e8;
+  margin-bottom: .6rem;
+}
+
+.sim-hint { font-size: .92rem; color: #6b7280; margin: 0 0 .9rem; }
+
+.sim-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 .9rem; }
+
+.sim-btn {
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: .45rem .95rem;
+  border-radius: 99px;
+  border: 1.5px solid #d9d2c7;
+  background: #faf7f2;
+  color: #4a4d53;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
+}
+.sim-btn:hover { border-color: #e8590c; color: #e8590c; transform: translateY(-1px); }
+.sim-btn.active { background: #e8590c; border-color: #e8590c; color: #ffffff; }
+.sim-btn.active:hover { color: #ffffff; }
+.sim-btn.go { background: #2f9e44; border-color: #2f9e44; color: #ffffff; }
+.sim-btn.go:hover { background: #268a3a; border-color: #268a3a; color: #ffffff; }
+.sim-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.sim-console, .sim-tree {
+  background: #171a21;
+  color: #dde3ec;
+  border: 1px solid #2b3240;
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+  font-family: "Cascadia Code", ui-monospace, Consolas, "SF Mono", Menlo, monospace;
+  font-size: .83rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  margin: 0 0 .8rem;
+}
+
+/* console state colors */
+.sim-console .ok   { color: #69db7c; font-weight: 600; }
+.sim-console .skip { color: #8b96a5; font-style: italic; }
+.sim-console .bad  { color: #ff8787; font-weight: 600; }
+.sim-console .hi   { color: #ffc078; font-weight: 600; }
+
+/* tree/diagram state colors */
+.sim-tree .t-new  { color: #69db7c; font-weight: 700; }
+.sim-tree .t-gone { color: #8b96a5; text-decoration: line-through; }
+.sim-tree .t-dim  { color: #8b96a5; }
+.sim-tree .t-ptr  { color: #ffc078; font-weight: 700; }
+.sim-tree .t-mark { color: #b197fc; font-weight: 700; }
+
+.sim-note { font-size: .8rem; color: #6b7280; font-style: italic; margin: .3rem 0 0; }
+
+@media (prefers-color-scheme: dark) {
+  .sim { background: #191c24; border-color: #9775fa; box-shadow: none; }
+  .sim::before { color: #9775fa; }
+  .sim-hint, .sim-note { color: #8d95a3; }
+  .sim-btn { background: #20242e; border-color: #3a3f4c; color: #aab2c0; }
+  .sim-btn:hover { border-color: #ff9457; color: #ff9457; }
+  .sim-btn.active { background: #ff9457; border-color: #ff9457; color: #24160c; }
+  .sim-btn.active:hover { color: #24160c; }
+  .sim-btn.go { background: #2f9e44; border-color: #2f9e44; color: #ffffff; }
+  .sim-console, .sim-tree { background: #0d1017; border-color: #232a35; }
+}
+
+/* ==========================================================================
+   Reduced motion — global kill-switch (keep LAST in the file)
+   ========================================================================== */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;

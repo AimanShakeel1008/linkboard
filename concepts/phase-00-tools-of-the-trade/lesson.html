@@ -267,6 +267,68 @@ cat errors.txt   <span class="c"># there it is</span></code></pre>
 
 <p><strong>Analogy:</strong> an assembly line in a factory. Each worker (program) does ONE small job well, then passes the item down the belt. <code>grep</code> only filters. <code>sort</code> only sorts. <code>wc</code> only counts. The deep idea: <strong>ten small tools that can be freely combined are more powerful than one giant tool that can't.</strong> This has a name — the <strong>Unix philosophy</strong> — and here is a spoiler for the whole course: good system design is the same idea at a bigger scale. Small components, each doing one job, connected by clean interfaces.</p>
 
+<div class="sim">
+  <p class="sim-hint">The pretend command <code>ls /home /nope</code> produces one normal line (out of hose 1, stdout) and one error line (out of hose 2, stderr). Click each redirection and watch where the two lines end up. Don't miss the pipe — it holds a surprise.</p>
+  <div class="sim-controls" id="sim1-controls">
+    <button type="button" class="sim-btn active" data-mode="plain">ls /home /nope</button>
+    <button type="button" class="sim-btn" data-mode="out">… &gt; out.txt</button>
+    <button type="button" class="sim-btn" data-mode="err">… 2&gt; err.txt</button>
+    <button type="button" class="sim-btn" data-mode="both">… &gt; out.txt 2&gt;&amp;1</button>
+    <button type="button" class="sim-btn" data-mode="null">… 2&gt; /dev/null</button>
+    <button type="button" class="sim-btn" data-mode="pipe">… | wc -l</button>
+  </div>
+  <div class="sim-console" id="sim1-out" aria-live="polite"></div>
+  <p class="sim-note">This is a model of the mechanism, not a real shell. The real authority is your terminal: run <code>ls /home /nope</code> in WSL with each of these redirections and compare.</p>
+</div>
+<script>
+(function () {
+  var OUT = ["", "alice  bob"];
+  var ERR = ["bad", "ls: cannot access '/nope': No such file or directory"];
+  var NONE = [["skip", "(file not created)"]];
+  var modes = {
+    plain: { screen: [OUT, ERR], out: NONE, err: NONE,
+             why: "no redirection: both hoses point at the screen, so output and error appear mixed together." },
+    out:   { screen: [ERR], out: [OUT], err: NONE,
+             why: "> points hose 1 (stdout) into out.txt. The error hose was not touched — it still hits the screen." },
+    err:   { screen: [OUT], out: NONE, err: [ERR],
+             why: "2> points hose 2 (stderr) into err.txt. Normal output still hits the screen." },
+    both:  { screen: [["skip", "(nothing — total silence)"]], out: [OUT, ERR], err: NONE,
+             why: "> points hose 1 at out.txt, then 2>&1 points hose 2 at wherever hose 1 goes. Everything captured." },
+    null:  { screen: [OUT], out: NONE, err: NONE,
+             why: "2> /dev/null pours the error hose down the discard chute. The complaint is gone forever." },
+    pipe:  { screen: [ERR, ["hi", "1"]], out: NONE, err: NONE,
+             why: "the pipe carries ONLY hose 1 into wc -l, which counts 1 line. Note the surprise: stderr BYPASSES the pipe and still hits your screen!" }
+  };
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function row(label, lines) {
+    var pad = "         ";
+    var html = "";
+    for (var i = 0; i < lines.length; i++) {
+      var name = (i === 0 ? (label + pad).slice(0, 9) : pad);
+      var cls = lines[i][0];
+      var txt = esc(lines[i][1]);
+      html += name + "│ " + (cls ? '<span class="' + cls + '">' + txt + "</span>" : txt) + "\n";
+    }
+    return html;
+  }
+  function render(mode) {
+    var m = modes[mode];
+    document.getElementById("sim1-out").innerHTML =
+      row("SCREEN", m.screen) + row("out.txt", m.out) + row("err.txt", m.err) +
+      '\n<span class="hi">→ ' + esc(m.why) + "</span>";
+  }
+  var btns = document.querySelectorAll("#sim1-controls .sim-btn");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function () {
+      for (var j = 0; j < btns.length; j++) btns[j].className = "sim-btn";
+      this.className = "sim-btn active";
+      render(this.getAttribute("data-mode"));
+    });
+  }
+  render("plain");
+})();
+</script>
+
 <h2 id="s3"><span class="secno">3.</span> Slicing text: grep, awk, sed &amp; friends</h2>
 
 <p>Why does a whole section of this course care about searching text files? Because <strong>servers narrate their lives into text files called logs</strong> — one line per event — and when something goes wrong at 2 a.m., the log is the witness you interrogate. Being fast at interrogating logs is <em>the</em> everyday superpower of people who run systems.</p>
@@ -822,6 +884,86 @@ the version from the branch being brought in
 &gt;&gt;&gt;&gt;&gt;&gt;&gt; dark-mode</code></pre>
 
 <p>Your job: edit the file into whatever it <em>should</em> say (usually keeping one side, sometimes blending both), delete the three marker lines, then <code>git add</code> the file and continue (<code>git commit</code> for a merge, <code>git rebase --continue</code> for a rebase). That's the whole procedure.</p>
+
+<div class="sim">
+  <p class="sim-hint">This is the exact story from above: main is on E, dark-mode is on Y, history diverged at C. Run one command and watch what it does to the album — then Reset and run a different one. Compare merge and rebase side by side.</p>
+  <div class="sim-controls" id="sim2-controls">
+    <button type="button" class="sim-btn go" id="sim2-commit">git commit (on main)</button>
+    <button type="button" class="sim-btn go" id="sim2-merge">git merge dark-mode</button>
+    <button type="button" class="sim-btn go" id="sim2-rebase">git rebase main</button>
+    <button type="button" class="sim-btn" id="sim2-reset">Reset</button>
+  </div>
+  <div class="sim-tree" id="sim2-tree"></div>
+  <div class="sim-console" id="sim2-log" aria-live="polite"></div>
+  <p class="sim-note">This is a model of the mechanism, not real Git. The real authority is your repository: try it with a throwaway branch and <code>git log --oneline --graph --all</code> after each step.</p>
+</div>
+<script>
+(function () {
+  var tree = document.getElementById("sim2-tree");
+  var log = document.getElementById("sim2-log");
+  var actions = [
+    document.getElementById("sim2-commit"),
+    document.getElementById("sim2-merge"),
+    document.getElementById("sim2-rebase")
+  ];
+  var BASE =
+    'A --- B --- C --- D --- E    <span class="t-ptr">← main</span> <span class="t-mark">(HEAD: you are here)</span>\n' +
+    "             \\\n" +
+    '              X --- Y        <span class="t-ptr">← dark-mode</span>';
+  var STATES = {
+    commit: {
+      tree:
+        'A --- B --- C --- D --- E --- <span class="t-new">F</span>    <span class="t-ptr">← main</span> <span class="t-mark">(HEAD)</span>\n' +
+        "             \\\n" +
+        '              X --- Y        <span class="t-ptr">← dark-mode</span>',
+      log:
+        '<span class="ok">created commit F</span> — parent: E (the commit main pointed at)\n' +
+        '<span class="ok">moved the sticky note "main"</span> from E to F — automatically\n' +
+        '<span class="hi">→ that is all a commit does: new snapshot + slide the current branch\'s note forward. dark-mode did not move.</span>'
+    },
+    merge: {
+      tree:
+        'A --- B --- C --- D --- E --- <span class="t-new">M</span>    <span class="t-ptr">← main</span> <span class="t-mark">(HEAD)</span>\n' +
+        "             \\               /\n" +
+        '              X --- Y -------        <span class="t-ptr">← dark-mode</span>',
+      log:
+        '<span class="ok">created merge commit M</span> — with <span class="hi">TWO parents: E and Y</span>\n' +
+        '<span class="ok">moved "main"</span> onto M; dark-mode still points at Y\n' +
+        '<span class="hi">→ honest and safe: every commit that ever existed is still there, and the join is recorded as a fact.</span>'
+    },
+    rebase: {
+      tree:
+        'A --- B --- C --- D --- E --- <span class="t-new">X\' --- Y\'</span>    <span class="t-ptr">← dark-mode</span> <span class="t-mark">(HEAD)</span>\n' +
+        "             \\\n" +
+        '              <span class="t-gone">X --- Y</span>        <span class="t-dim">(abandoned — no sticky note points here anymore)</span>',
+      log:
+        '(after git switch dark-mode)\n' +
+        '<span class="ok">replayed X on top of E</span> as X\' — <span class="bad">a NEW commit with a NEW fingerprint</span> (its parent changed, so its fingerprint had to)\n' +
+        '<span class="ok">replayed Y</span> as Y\' on top of X\'\n' +
+        '<span class="bad">originals X and Y abandoned</span> — findable only via the reflog\n' +
+        '<span class="hi">→ tidy straight line, but history was rewritten. If X and Y had been pushed and others built on them: the iron rule says never do this.</span>'
+    }
+  };
+  function setDisabled(v) {
+    for (var i = 0; i < actions.length; i++) actions[i].disabled = v;
+  }
+  function reset() {
+    tree.innerHTML = BASE;
+    log.innerHTML = '<span class="skip">(no command run yet — the album is as drawn in the story above)</span>';
+    setDisabled(false);
+  }
+  function run(name) {
+    tree.innerHTML = STATES[name].tree;
+    log.innerHTML = STATES[name].log;
+    setDisabled(true);
+  }
+  document.getElementById("sim2-commit").addEventListener("click", function () { run("commit"); });
+  document.getElementById("sim2-merge").addEventListener("click", function () { run("merge"); });
+  document.getElementById("sim2-rebase").addEventListener("click", function () { run("rebase"); });
+  document.getElementById("sim2-reset").addEventListener("click", reset);
+  reset();
+})();
+</script>
 
 <h3>10.8 The rescue kit: cherry-pick, bisect, reflog</h3>
 

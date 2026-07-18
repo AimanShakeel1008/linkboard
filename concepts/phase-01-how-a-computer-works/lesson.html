@@ -347,6 +347,95 @@ ps -f -u $USER   <span class="c"># full detail on YOURS: note the PID and PPID c
   <p><strong>Round 2</strong> runs the same job with a <strong>lock</strong> (also called a <strong>mutex</strong>, for <em>mutual exclusion</em>) — the bathroom-door rule: one roommate inside at a time, everyone else waits at the door. Result: exactly 10,000, every time. Also: slower. Taking turns costs speed. <strong>Correct-but-slower versus fast-but-wrong</strong> is a tradeoff you will negotiate for the rest of this course, all the way up to distributed databases (Phase 15).</p>
 </div>
 
+<div class="sim">
+  <p class="sim-hint">You are the scheduler. The counter starts at 41; threads A and B each want to add 1 (read → compute → write), so the correct end result is 43. Step the threads in any order you like. Try this order first: <strong>A, B, A, B, A, B</strong> — then Reset, switch on the lock, and try the same order again.</p>
+  <div class="sim-controls" id="sim1-controls">
+    <button type="button" class="sim-btn go" id="sim1-stepa">Step thread A</button>
+    <button type="button" class="sim-btn go" id="sim1-stepb">Step thread B</button>
+    <button type="button" class="sim-btn active" id="sim1-nolock">No lock</button>
+    <button type="button" class="sim-btn" id="sim1-lock">With a lock</button>
+    <button type="button" class="sim-btn" id="sim1-reset">Reset</button>
+  </div>
+  <div class="sim-console" id="sim1-log" aria-live="polite"></div>
+  <p class="sim-note">This is a model of the mechanism, not a real scheduler — real interleaving is decided by the OS, thousands of times a second. The real authority is <code>python3 thread_garble.py</code>, where the same collision eats thousands of increments for real.</p>
+</div>
+<script>
+(function () {
+  var logEl = document.getElementById("sim1-log");
+  var st, lines, mode = "nolock";
+  function init() {
+    st = { A: { pc: 0, local: 0, result: 0 }, B: { pc: 0, local: 0, result: 0 }, counter: 41, lock: null };
+    lines = ['<span class="skip">(counter starts at 41 — correct final answer is 43)</span>'];
+    render();
+  }
+  function render() {
+    var head = "counter = " + st.counter +
+      "   |   A: " + pos("A") + "   |   B: " + pos("B") +
+      (mode === "lock" ? "   |   lock: " + (st.lock || "free") : "") + "\n\n";
+    logEl.innerHTML = head + lines.join("\n");
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function pos(t) {
+    return ["about to READ", "about to COMPUTE", "about to WRITE", "done"][st[t].pc];
+  }
+  function verdict() {
+    if (st.A.pc === 3 && st.B.pc === 3) {
+      lines.push("");
+      if (st.counter === 43) {
+        lines.push('<span class="ok">FINAL: counter = 43 — both increments survived. This ordering happened to be safe.</span>');
+        if (mode === "nolock") lines.push('<span class="hi">→ but nothing FORCED it to be safe. Reset and interleave the reads (A, B, A, B...) to watch it break.</span>');
+      } else {
+        lines.push('<span class="bad">FINAL: counter = ' + st.counter + " — an increment VANISHED. The later write overwrote the earlier one.</span>");
+        lines.push('<span class="hi">→ and notice: no error, no crash. The counter simply lies. That is a race condition.</span>');
+      }
+    }
+  }
+  function step(t) {
+    var th = st[t], other = t === "A" ? "B" : "A";
+    if (th.pc === 3) { lines.push('<span class="skip">' + t + " is already finished.</span>"); render(); return; }
+    if (mode === "lock" && th.pc === 0) {
+      if (st.lock && st.lock !== t) {
+        lines.push('<span class="skip">' + t + " waits at the door — the lock is held by " + other + ". (Nothing happens. That IS the fix.)</span>");
+        render(); return;
+      }
+      if (!st.lock) { st.lock = t; lines.push(t + ' <span class="ok">takes the lock</span> — door closed behind them'); }
+    }
+    if (th.pc === 0) {
+      th.local = st.counter;
+      lines.push(t + " READS the counter → sees " + th.local);
+    } else if (th.pc === 1) {
+      th.result = th.local + 1;
+      lines.push(t + " COMPUTES " + th.local + " + 1 = " + th.result + ' <span class="skip">(in its own head — the counter is untouched)</span>');
+    } else {
+      var lost = (st.counter !== th.local);
+      st.counter = th.result;
+      lines.push(t + " WRITES " + th.result + " into the counter" +
+        (lost ? ' <span class="bad">— overwriting a value it never saw!</span>' : ""));
+      if (mode === "lock") { st.lock = null; lines.push(t + ' <span class="ok">releases the lock</span> — door open'); }
+    }
+    th.pc++;
+    verdict();
+    render();
+  }
+  document.getElementById("sim1-stepa").addEventListener("click", function () { step("A"); });
+  document.getElementById("sim1-stepb").addEventListener("click", function () { step("B"); });
+  document.getElementById("sim1-nolock").addEventListener("click", function () {
+    mode = "nolock";
+    this.className = "sim-btn active";
+    document.getElementById("sim1-lock").className = "sim-btn";
+    init();
+  });
+  document.getElementById("sim1-lock").addEventListener("click", function () {
+    mode = "lock";
+    this.className = "sim-btn active";
+    document.getElementById("sim1-nolock").className = "sim-btn";
+    init();
+  });
+  document.getElementById("sim1-reset").addEventListener("click", init);
+  init();
+})();
+</script>
+
 <h3>Processes vs threads, side by side</h3>
 
 <table>
