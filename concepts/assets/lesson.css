@@ -575,6 +575,81 @@ footer.next :last-child { margin-bottom: 0; }
 }
 
 /* ==========================================================================
+   DIAGRAMS (.diagram / .dgm-*)
+   Inline-SVG figures embedded in lessons. Fully self-contained — no external
+   image files, so file:// keeps working. SVG elements are styled by class
+   here (never per-lesson), literal colors only, with dark overrides at the
+   end of this section — same discipline as the .sim-* components.
+   ========================================================================== */
+
+figure.diagram {
+  margin: 0 0 1.6rem;
+  padding: 1.3rem 1.3rem .7rem;
+  background: #ffffff;
+  border: 1px solid #ece5da;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(60, 35, 10, .08);
+  text-align: center;
+}
+figure.diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 660px;
+  margin: 0 auto;
+  overflow: visible;
+}
+figure.diagram figcaption {
+  font-size: .82rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: .8rem;
+  line-height: 1.55;
+  max-width: 60ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* boxes / nodes (fill + stroke). Tints are light in light mode. */
+.dgm-box      { fill: #fff4ea; stroke: #e8590c; stroke-width: 2; }
+.dgm-box-teal { fill: #e3f2f4; stroke: #0c8599; stroke-width: 2; }
+.dgm-box-violet { fill: #efeafc; stroke: #7048e8; stroke-width: 2; }
+.dgm-box-mut  { fill: #f5f1ea; stroke: #cabfae; stroke-width: 2; }
+.dgm-node     { fill: #ffffff; stroke: #8c96a4; stroke-width: 2; }
+
+/* connectors + arrowheads */
+.dgm-edge     { fill: none; stroke: #aeb6c2; stroke-width: 2; }
+.dgm-edge-hi  { fill: none; stroke: #e8590c; stroke-width: 2.5; }
+.dgm-edge-dash { fill: none; stroke: #aeb6c2; stroke-width: 1.6; stroke-dasharray: 4 5; }
+.dgm-arrow    { fill: #aeb6c2; }
+.dgm-arrow-hi { fill: #e8590c; }
+
+/* text */
+.dgm-t     { fill: #33363d; font-family: inherit; font-size: 15px; font-weight: 600; }
+.dgm-t-sm  { fill: #6b7280; font-family: inherit; font-size: 12.5px; font-weight: 500; }
+.dgm-t-hi  { fill: #d9480f; font-family: inherit; font-size: 12.5px; font-weight: 700; }
+.dgm-t-mono { fill: #33363d; font-family: "Cascadia Code", ui-monospace, Consolas, Menlo, monospace; font-size: 13px; font-weight: 600; }
+
+@media (prefers-color-scheme: dark) {
+  figure.diagram { background: #191c24; border-color: #262b35; box-shadow: none; }
+  figure.diagram figcaption { color: #8d95a3; }
+  .dgm-box       { fill: #2a1a0f; stroke: #ff9457; }
+  .dgm-box-teal  { fill: #0e2529; stroke: #35b3c6; }
+  .dgm-box-violet { fill: #1b1533; stroke: #9775fa; }
+  .dgm-box-mut   { fill: #1b1f27; stroke: #3a4150; }
+  .dgm-node      { fill: #20242e; stroke: #6b7688; }
+  .dgm-edge      { stroke: #49515f; }
+  .dgm-edge-hi   { stroke: #ff9457; }
+  .dgm-edge-dash { stroke: #49515f; }
+  .dgm-arrow     { fill: #49515f; }
+  .dgm-arrow-hi  { fill: #ff9457; }
+  .dgm-t         { fill: #d4d9e0; }
+  .dgm-t-sm      { fill: #8d95a3; }
+  .dgm-t-hi      { fill: #ff9457; }
+  .dgm-t-mono    { fill: #d4d9e0; }
+}
+
+/* ==========================================================================
    Reduced motion — global kill-switch (keep LAST in the file)
    ========================================================================== */
 
