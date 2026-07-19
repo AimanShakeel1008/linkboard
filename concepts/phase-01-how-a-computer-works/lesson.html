@@ -28,7 +28,9 @@
       <a href="#challenges">Challenges &amp; Questions</a>
     </nav>
     <div class="toc-bottom">
+      <a href="../index.html">↑ Course hub &amp; roadmap</a>
       <a href="../phase-00-tools-of-the-trade/lesson.html">← Prev: Phase 00</a>
+      <a href="../phase-02-internet-and-protocols/lesson.html">Next: Phase 02 →</a>
     </div>
   </div>
 </aside>
@@ -179,7 +181,7 @@ xxd /tmp/tiny.txt</code></pre>
 
 <p>The CPU's L1/L2/L3 are hardware caches for RAM. Later, Redis (Phase 8) will be <em>our application's</em> cache for the database, and the design will rhyme perfectly with this staircase. Same idea, bigger scale.</p>
 
-<p>One more definition while we're here, because the table used it: <strong>latency</strong> means "how long you wait for one answer." It's the <em>length</em> of the pipe, not its width. (Width — how much data per second — is <strong>bandwidth</strong> or <strong>throughput</strong>; Phase 2 digs into the difference.)</p>
+<p>One more definition while we're here, because the table used it: <strong>latency</strong> means "how long you wait for one answer." It's the <em>length</em> of the pipe, not its width. (Width — how much data per second — is <strong>bandwidth</strong> or <strong>throughput</strong>; <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> digs into the difference.)</p>
 
 <h2 id="pc">Part C — RAM vs storage, and the disk race</h2>
 
@@ -499,7 +501,7 @@ strace -c ls /tmp</code></pre>
 
 <h3>First, the letters: what is I/O?</h3>
 
-<p><strong>I/O</strong> stands for input/output — any time a program talks to the world outside its own memory. Reading a file is I/O. A network request is I/O. Printing to the terminal is I/O. (Each one, you now know, is a syscall.)</p>
+<p><strong>I/O</strong> stands for input/output — any time a program talks to the world outside its own memory. Reading a file is I/O. A network request is I/O. Printing to the terminal is I/O. (Each one, you now know, is a <span class="term" tabindex="0" data-def="A request from your program to the OS kernel to do something it can't do directly — read a file, send network data, start a process.">syscall</span>.)</p>
 
 <p>Now put two facts you've already learned side by side:</p>
 
@@ -524,7 +526,7 @@ strace -c ls /tmp</code></pre>
 
 <p>Kitchen takes ten minutes per dish. Five tables. The fifth table waits nearly an hour <em>just to order</em>, while the waiter spends the whole hour standing perfectly still. The waiter isn't slow. The kitchen isn't even slow, really. The <em>rule</em> is the disaster: <strong>the waiting doesn't overlap.</strong></p>
 
-<p>That waiter is a naive web server. "Take request, wait for the database, respond, only then look at the next customer" — one slow request freezes every user behind it. In Phase 2 we will build exactly this server, on purpose, from raw sockets, and you will <em>be</em> the ignored customer. It's infuriating. It's also the founding problem of server architecture:</p>
+<p>That waiter is a naive web server. "Take request, wait for the database, respond, only then look at the next customer" — one slow request freezes every user behind it. In <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> we will build exactly this server, on purpose, from raw sockets, and you will <em>be</em> the ignored customer. It's infuriating. It's also the founding problem of server architecture:</p>
 
 <ul>
   <li><strong>Hire more waiters</strong> — a thread or process per customer (Phase 2's fix, and its limits in Phase 9).</li>
@@ -532,6 +534,15 @@ strace -c ls /tmp</code></pre>
 </ul>
 
 <p>Where the analogy breaks, one more time: a blocked process costs the machine almost nothing (the kernel runs other work meanwhile) — a frozen human waiter is pure waste. The waste in software is the <em>customers'</em> time, not the CPU's.</p>
+
+<details class="check">
+  <summary>Quick check: while your program is blocked on <code>f.read()</code>, is the CPU sitting idle burning cycles on your behalf?</summary>
+  <p>No. The kernel takes your process <em>off</em> the CPU the moment it blocks and runs some other process instead — your program consumes no CPU while it waits. That's the key asymmetry: blocking wastes <strong>your program's</strong> wall-clock time, but not the machine's CPU time. It's exactly why running the three fetches on three threads finishes in ~2s instead of ~6s: the waits overlap at no CPU cost.</p>
+</details>
+
+<div class="realworld">
+  <p>This single idea is the fork in the road for every web server ever built. Real systems pick one of the two fixes from the waiter analogy. <strong>Thread/process-per-request</strong> (Apache's classic mode, and the direction we take first) is simple but each waiting request still costs a whole thread's worth of memory. <strong>Event-driven, non-blocking I/O</strong> (Nginx, Node.js, Python's <code>asyncio</code>) runs thousands of waiting connections on one thread — the "one unfrozen waiter." "Explain blocking vs non-blocking I/O, and why an event loop scales further" is one of the most common systems-design interview questions, and you now have the mechanical answer, not a memorized slogan.</p>
+</div>
 
 <div class="demo">
   <span class="label">🏁 Demo 4: blocking_waiter.py</span>
@@ -698,7 +709,7 @@ top          <span class="c"># find the pythons; press 'q' to quit</span></code>
 
 <span class="hi">[RESULT] sequential 6.01 s  vs  threaded 2.01 s (3.0x faster)</span></code></pre>
 
-<p><strong>What the timestamps prove:</strong> Round 1's requests each start only when the previous one finishes — 0, 2, 4 — waits in single file. Round 2's all start at 0.00s and all land at 2.00s — three blocked threads waiting simultaneously, costing the CPU nothing. Waiting overlaps for free; that one sentence is the foundation of all server architecture, and Phase 2 builds directly on it.</p>
+<p><strong>What the timestamps prove:</strong> Round 1's requests each start only when the previous one finishes — 0, 2, 4 — waits in single file. Round 2's all start at 0.00s and all land at 2.00s — three blocked threads waiting simultaneously, costing the CPU nothing. Waiting overlaps for free; that one sentence is the foundation of all server architecture, and <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> builds directly on it.</p>
 
 <h2 id="break">Break it / observe it</h2>
 
@@ -753,7 +764,7 @@ top          <span class="c"># find the pythons; press 'q' to quit</span></code>
 
 <details>
 <summary><strong>Q2.</strong> The staircase table says a network hop can cost milliseconds — months on the human scale. LinkBoard will eventually call a database over the network on every request. Using ONLY ideas from this lesson, guess two strategies to keep that from making every page slow. (You're allowed to invent — both real answers are hiding in this lesson.)</summary>
-<p>1. <strong>Cache the popular answers closer</strong> — keep copies of frequent query results in the app's own RAM or a nearby fast store, so repeat requests skip the network trip entirely. That's the cache concept (Part B), scaled up: it becomes Redis in Phase 8. 2. <strong>Overlap the waiting</strong> — a network call is blocking I/O; while one request waits on the database, the server should be working on <em>other</em> requests, exactly like Round 2 of <code>blocking_waiter.py</code>. That's threads/async, arriving in Phase 2. (Bonus third answer: send fewer/bigger requests instead of many tiny ones — the sequential-vs-random lesson in network form; that becomes the N+1 problem in Phase 6.)</p>
+<p>1. <strong>Cache the popular answers closer</strong> — keep copies of frequent query results in the app's own RAM or a nearby fast store, so repeat requests skip the network trip entirely. That's the cache concept (Part B), scaled up: it becomes Redis in Phase 8. 2. <strong>Overlap the waiting</strong> — a network call is blocking I/O; while one request waits on the database, the server should be working on <em>other</em> requests, exactly like Round 2 of <code>blocking_waiter.py</code>. That's threads/async, arriving in <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a>. (Bonus third answer: send fewer/bigger requests instead of many tiny ones — the sequential-vs-random lesson in network form; that becomes the N+1 problem in Phase 6.)</p>
 </details>
 
 <details>

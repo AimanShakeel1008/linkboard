@@ -665,6 +665,322 @@ figure.fig figcaption {
 }
 
 /* ==========================================================================
+   HOVER-TO-DEFINE GLOSSARY TERMS (.term)                        [FEATURE 2]
+   CSS-only tooltip. Wrap a term's first re-mention in a later lesson in
+   <span class="term" tabindex="0" data-def="one-line definition">…</span>.
+   The definition (from data-def) appears on BOTH hover and keyboard focus,
+   fully offline. Don't over-wrap in the lesson that already defines the term
+   inline — this is mainly for terms re-used in LATER lessons.
+   ========================================================================== */
+
+.term {
+  border-bottom: 1.5px dotted #0c8599;
+  cursor: help;
+  position: relative;
+  font-weight: 550;
+}
+.term:focus-visible { outline: 2px solid #0c8599; outline-offset: 2px; border-radius: 3px; }
+
+/* the tooltip bubble + its little downward arrow — both hidden until hover/focus */
+.term::after {
+  content: attr(data-def);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: min(20rem, 78vw);
+  background: #171a21;
+  color: #f0f3f7;
+  font: 500 .8rem/1.5 "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-style: normal;
+  text-align: left;
+  padding: .55rem .8rem;
+  border-radius: 8px;
+  border: 1px solid #2b3240;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease, transform .15s ease;
+  z-index: 30;
+  pointer-events: none;
+  white-space: normal;
+}
+.term::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #171a21;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease;
+  z-index: 31;
+  pointer-events: none;
+}
+.term:hover::after, .term:focus::after,
+.term:hover::before, .term:focus::before {
+  opacity: 1;
+  visibility: visible;
+}
+.term:hover::after, .term:focus::after { transform: translateX(-50%) translateY(0); }
+
+@media (prefers-color-scheme: dark) {
+  .term { border-bottom-color: #35b3c6; }
+  .term:focus-visible { outline-color: #35b3c6; }
+  .term::after { background: #05070c; border-color: #232a35; color: #eef1f6; }
+  .term::before { border-top-color: #05070c; }
+}
+
+/* ==========================================================================
+   SYNTAX HIGHLIGHTING TOKENS (inside <pre><code>)               [FEATURE 3]
+   Manual span classes — NO JavaScript highlighter. Because code blocks are
+   dark in BOTH themes, these token colours need no dark-mode override.
+   RULE: a token span must NEVER split an escaped entity (&lt; &gt; &amp;) —
+   wrap the whole entity or nothing. Existing tokens kept: .c (comment),
+   .hi (highlighted output line).
+     .kw  keyword           .ty  type / class name
+     .str string / char     .num number / literal
+     .an  annotation/deco.   .fn  function / method name
+   ========================================================================== */
+
+pre .kw  { color: #c792ea; }                 /* keyword: import, def, if, SELECT… */
+pre .ty  { color: #56b6c2; }                 /* type / class: int, String, Socket… */
+pre .str { color: #98c379; }                 /* string / char literal */
+pre .num { color: #d19a66; }                 /* number / numeric literal */
+pre .an  { color: #61afef; }                 /* annotation / decorator: @app.route */
+pre .fn  { color: #e5c07b; }                 /* function / method name at a call/def */
+
+/* ==========================================================================
+   ACTIVE-RECALL MICRO-CHECKS (details.check)                    [FEATURE 4]
+   A "check your understanding" question at a section boundary. Styled
+   DISTINCTLY from the purple hidden-answer <details> used for challenges:
+   teal accent + an auto "ACTIVE RECALL" badge on the summary. The answer is
+   always present but hidden — never gate progress on it.
+   ========================================================================== */
+
+details.check {
+  border-color: #cbe7ed;
+  border-left-color: #0c8599;
+  background: #eef8fa;
+}
+details.check > summary { color: #0c8599; }
+details.check > summary:hover { color: #e8590c; }
+details.check > summary::before {
+  content: "Active recall";
+  display: inline-block;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #0c8599;
+  border-radius: 99px;
+  padding: .1rem .55rem;
+  margin-right: .6rem;
+  vertical-align: .1em;
+}
+
+@media (prefers-color-scheme: dark) {
+  details.check { background: #0f2429; border-color: #24424a; border-left-color: #35b3c6; }
+  details.check > summary { color: #35b3c6; }
+  details.check > summary:hover { color: #ff9457; }
+  details.check > summary::before { background: #35b3c6; color: #05191d; }
+}
+
+/* ==========================================================================
+   "IN THE REAL WORLD" CALLOUT (.realworld)                      [FEATURE 5]
+   Fifth callout card (alongside .tryit/.note/.warn/.demo), for connecting a
+   concept to production, teams, or interviews. Violet accent + AUTO label
+   (no manual <span class="label"> needed). Use only where it genuinely
+   motivates — never one-per-lesson by rote.
+   ========================================================================== */
+
+.realworld {
+  border-radius: 12px;
+  padding: 1.1rem 1.3rem;
+  margin: 0 0 1.4rem;
+  background: #f3eefe;
+  border-left: 5px solid #7048e8;
+  box-shadow: 0 1px 4px rgba(60, 35, 10, .08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.realworld::before {
+  content: "In the real world";
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #7048e8;
+  margin-bottom: .45rem;
+}
+.realworld:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(60, 35, 10, .14); }
+.realworld :last-child { margin-bottom: 0; }
+
+@media (prefers-color-scheme: dark) {
+  .realworld { background: #1b1533; border-left-color: #9775fa; box-shadow: none; }
+  .realworld::before { color: #9775fa; }
+  .realworld:hover { box-shadow: 0 5px 14px rgba(0, 0, 0, .45); }
+}
+
+/* ==========================================================================
+   COURSE HUB + ROADMAP (concepts/index.html)                    [FEATURE 1]
+   The hub reuses .page/main/header.lesson/figure.fig. These classes add the
+   status-badge vocabulary and the chapter/lesson list, plus the roadmap
+   SVG's stage colours. STATUS COLOUR LANGUAGE (shared by badges AND the
+   roadmap SVG, so the two always agree):
+     done  = GREEN   (a finished phase — same success-green as .tryit)
+     now   = ORANGE  (the phase you're on now — same "the thing you own /
+                      are working on" orange as .fig-box-you)
+     todo  = NEUTRAL (a planned, not-yet-started phase)
+   ========================================================================== */
+
+/* status badges on chapter rows */
+.status {
+  display: inline-block;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .12rem .55rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.status-done    { background: #d3f9d8; color: #2b8a3e; }
+.status-now     { background: #ffe8cc; color: #d9480f; }
+.status-planned { background: #edeef1; color: #868e96; }
+
+/* the chapter / lesson list */
+.hub-part {
+  margin: 2.1rem 0 .7rem;
+  font-size: .8rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #0c8599;
+  font-weight: 800;
+}
+.hub-list { list-style: none; padding: 0; margin: 0; }
+.hub-row {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .6rem .9rem;
+  margin-bottom: .5rem;
+  border: 1px solid #e7e1d6;
+  border-radius: 10px;
+  background: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 3px rgba(60, 35, 10, .06);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+a.hub-row:hover { transform: translateX(3px); border-color: #e8590c; box-shadow: 0 4px 12px rgba(60, 35, 10, .13); }
+.hub-row.is-planned { opacity: .72; box-shadow: none; }
+.hub-row .hub-num {
+  font-family: "Cascadia Code", ui-monospace, Consolas, Menlo, monospace;
+  font-size: .82rem;
+  font-weight: 700;
+  color: #6b7280;
+  min-width: 3.4rem;
+}
+.hub-row .hub-title { flex: 1; font-weight: 600; }
+.hub-row .hub-title small { display: block; font-weight: 400; font-size: .82rem; color: #6b7280; margin-top: .1rem; }
+
+/* roadmap SVG stage nodes — reuse the shared .fig-* text/edge/arrow classes */
+.fig-stage-done { fill: #d3f9d8; stroke: #2b8a3e; stroke-width: 2; }
+.fig-stage-now  { fill: #ffe8cc; stroke: #e8590c; stroke-width: 2.5; }
+.fig-stage-todo { fill: #f1f0ee; stroke: #b9c0cb; stroke-width: 2; }
+.fig-stage-num  { fill: #33363d; font-family: inherit; font-size: 15px; font-weight: 800; }
+.fig-youhere    { fill: #d9480f; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+
+@media (prefers-color-scheme: dark) {
+  .status-done    { background: #133a1c; color: #69db7c; }
+  .status-now     { background: #3a2410; color: #ffab73; }
+  .status-planned { background: #23262e; color: #9aa1ad; }
+  .hub-part { color: #3bc9db; }
+  .hub-row { background: #191c24; border-color: #2b2f3a; box-shadow: none; }
+  a.hub-row:hover { border-color: #ff9457; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); }
+  .hub-row .hub-num, .hub-row .hub-title small { color: #8d95a3; }
+  .fig-stage-done { fill: #133a1c; stroke: #51b566; }
+  .fig-stage-now  { fill: #3a2410; stroke: #ff9457; }
+  .fig-stage-todo { fill: #1b1f27; stroke: #49515f; }
+  .fig-stage-num  { fill: #d4d9e0; }
+  .fig-youhere    { fill: #ff9457; }
+}
+
+/* ==========================================================================
+   PRINT STYLESHEET                                              [FEATURE 6]
+   Turns any lesson into clean PDF study notes: drop the sidebar/nav/footer
+   and interactive chrome, flatten the heavy gradient banners to ink-light,
+   wrap long code lines, remap the dark code tokens to dark-on-white ink, and
+   forbid page breaks inside figures, callouts, and code blocks.
+   ========================================================================== */
+
+@media print {
+  html { scroll-behavior: auto; }
+  body { background: #ffffff; color: #111111; font-size: 11pt; }
+
+  /* drop navigation + interactive chrome */
+  .toc, footer.next, .sim, .term::after, .term::before { display: none !important; }
+
+  .page { display: block; max-width: none; margin: 0; padding: 0; gap: 0; }
+  main { animation: none; }
+
+  /* flatten the gradient banners to ink-light */
+  header.lesson {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    box-shadow: none;
+    animation: none;
+  }
+  header.lesson h1, .kicker, .covers, .covers strong { color: #111111 !important; text-shadow: none; }
+  header.lesson .covers code { background: #f0f0f0; color: #111111; }
+
+  h2 { border-bottom-color: #999999; }
+  a { color: #111111; text-decoration: underline; }
+
+  /* callouts + tables + figures: light borders, no shadow */
+  .tryit, .note, .warn, .demo, .realworld, details, figure.fig, blockquote {
+    box-shadow: none !important;
+    background: #ffffff !important;
+    border: 1px solid #cccccc;
+  }
+  .term { border-bottom: none; font-weight: 550; }
+
+  /* code: wrap long lines + remap dark-theme tokens to print-friendly ink */
+  pre {
+    background: #f5f5f5 !important;
+    color: #1a1a1a !important;
+    border: 1px solid #cccccc;
+    box-shadow: none !important;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  pre::before { display: none; }          /* the traffic-light dots */
+  pre code { color: #1a1a1a !important; }
+  pre .c   { color: #5f6b5f !important; }
+  pre .hi  { color: #000000 !important; font-weight: 700; }
+  pre .kw  { color: #6b21a8 !important; }
+  pre .ty  { color: #0c6b7a !important; }
+  pre .str { color: #216e39 !important; }
+  pre .num { color: #a15c1b !important; }
+  pre .an  { color: #1a5fb4 !important; }
+  pre .fn  { color: #8a6d00 !important; }
+
+  /* never split these across a page break */
+  figure.fig, .tryit, .note, .warn, .demo, .realworld, pre, details, table, blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+}
+
+/* ==========================================================================
    Reduced motion — global kill-switch (keep LAST in the file)
    ========================================================================== */
 

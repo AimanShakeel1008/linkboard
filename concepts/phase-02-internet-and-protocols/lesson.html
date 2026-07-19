@@ -30,6 +30,7 @@
       <a href="#challenges">Challenges &amp; Questions</a>
     </nav>
     <div class="toc-bottom">
+      <a href="../index.html">↑ Course hub &amp; roadmap</a>
       <a href="../phase-01-how-a-computer-works/lesson.html">← Prev: Phase 01</a>
     </div>
   </div>
@@ -40,12 +41,12 @@
 <header class="lesson">
   <p class="kicker">LinkBoard · Part I — Bedrock</p>
   <h1>Phase 02 — The Internet &amp; Protocols</h1>
-  <p class="covers"><strong>Covers:</strong> M1 (The Internet) and M2 (Protocols). <strong>You need:</strong> WSL (Ubuntu) from Phase 0, Python 3 (already installed), and the command-line tools <code>dig</code>, <code>curl</code>, and <code>ip</code> (we'll install any that are missing in one step). <strong>Where the code lives:</strong> this is the phase where LinkBoard is BORN — the first real code lands in <code>project/</code>: <code>server.py</code> and <code>slow_client.py</code>.</p>
+  <p class="covers"><strong>Covers:</strong> M1 (The Internet) and M2 (Protocols). <strong>You need:</strong> WSL (Ubuntu) from <a href="../phase-00-tools-of-the-trade/lesson.html">Phase 0</a>, Python 3 (already installed), and the command-line tools <code>dig</code>, <code>curl</code>, and <code>ip</code> (we'll install any that are missing in one step). <strong>Where the code lives:</strong> this is the phase where LinkBoard is BORN — the first real code lands in <code>project/</code>: <code>server.py</code> and <code>slow_client.py</code>.</p>
 </header>
 
 <h2 id="why">Why this phase exists</h2>
 
-<p>In Phase 1 we stayed inside a single computer: one CPU, its memory, its disk, its operating system. But LinkBoard is a <em>website</em>. A website's whole purpose is to let a computer you've never met — someone's phone on the other side of the planet — ask your computer for a page and get it back.</p>
+<p>In <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a> we stayed inside a single computer: one CPU, its memory, its disk, its operating system. But LinkBoard is a <em>website</em>. A website's whole purpose is to let a computer you've never met — someone's phone on the other side of the planet — ask your computer for a page and get it back.</p>
 
 <p>So we have to answer a question that sounds simple and absolutely is not: <strong>when you type an address and press enter, how do the right bytes travel to the right machine and come back?</strong></p>
 
@@ -188,7 +189,7 @@ traceroute google.com</code></pre>
 
 <p>For a packet to be delivered, the destination needs an address — a number every router understands. That number is an <strong>IP address</strong> (IP stands for Internet Protocol, the most fundamental agreement of all: "here is how we address and route packets").</p>
 
-<p>The kind you've probably seen looks like this: <code>142.250.72.14</code>. Four numbers, each from 0 to 255, separated by dots. This is <strong>IPv4</strong> (version 4). Each of those four numbers is one byte (remember Phase 1 — one byte holds 0 to 255), so an IPv4 address is exactly four bytes = 32 bits.</p>
+<p>The kind you've probably seen looks like this: <code>142.250.72.14</code>. Four numbers, each from 0 to 255, separated by dots. This is <strong>IPv4</strong> (version 4). Each of those four numbers is one byte (remember <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a> — one byte holds 0 to 255), so an IPv4 address is exactly four bytes = 32 bits.</p>
 
 <p>Thirty-two bits gives about 4.3 billion possible addresses. In the 1980s that felt infinite. It isn't — there are more phones, laptops, servers, smart bulbs, and cars online than that. We ran out.</p>
 
@@ -297,7 +298,7 @@ ip -4 addr show</code></pre>
 
 <p>If every single click required that full root → TLD → authoritative walk, the web would crawl. So every answer comes with a <strong>TTL</strong> (Time To Live) — a number of seconds the answer may be reused before it must be looked up fresh. During that window, your resolver (and your own computer, and your browser) just remember the answer. Look up <code>google.com</code> once and the next thousand visits skip the whole walk and use the cached number. When the TTL expires, the cache forgets it, and the next lookup does the full walk again — which is exactly how a site can move to a new IP and have the world notice within, say, five minutes.</p>
 
-<p>The simulation below lets you <em>be</em> the resolver: click through the chain once, then look the same name up again and watch the cache short-circuit the whole thing. That cache-hit-on-the-second-try is the entire point of TTL, and it's the same caching instinct from Phase 1 (keep popular answers close), now applied to names.</p>
+<p>The simulation below lets you <em>be</em> the resolver: click through the chain once, then look the same name up again and watch the cache short-circuit the whole thing. That cache-hit-on-the-second-try is the entire point of TTL, and it's the same caching instinct from <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a> (keep popular answers close), now applied to names.</p>
 
 <div class="sim">
   <p class="sim-hint">You are a DNS resolver. A program just asked you to resolve <strong>www.linkboard.example.com</strong>. Click <strong>Resolve the name</strong> and step through the chain. Then click it a <em>second</em> time and watch what the cache does. Use <strong>Advance the clock</strong> to expire the TTL and force a fresh walk.</p>
@@ -467,7 +468,12 @@ dig google.com</code></pre>
   <figcaption><strong>Orange</strong> = your computer (the side you own); <strong>violet</strong> = the remote server run by someone else. Three messages open the connection before a single byte of your request is sent — one full round-trip spent just saying hello, the unavoidable latency cost you'll learn to spend sparingly.</figcaption>
 </figure>
 
-<p>Three messages, and now a reliable, ordered connection exists in both directions. Only <em>then</em> does your browser send the actual <code>GET / HTTP/1.1</code> request. This is also why a network round-trip has a real cost you can't avoid: even before asking for anything, you've spent one full round-trip just saying hello. Remember Phase 1's staircase — a network hop is "months" on the human scale — and now you know part of why: TCP politely shakes hands first.</p>
+<p>Three messages, and now a reliable, ordered connection exists in both directions. Only <em>then</em> does your browser send the actual <code>GET / HTTP/1.1</code> request. This is also why a network round-trip has a real cost you can't avoid: even before asking for anything, you've spent one full round-trip just saying hello. Remember <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>'s staircase — a network hop is "months" on the human scale — and now you know part of why: TCP politely shakes hands first.</p>
+
+<details class="check">
+  <summary>Quick check: why does the handshake need <em>three</em> messages instead of two?</summary>
+  <p>Because each side has to confirm that <strong>both</strong> directions of the connection work. Message 1 (SYN) lets the client say "can you hear me?" Message 2 (SYN-ACK) lets the server answer "yes, and can <em>you</em> hear me?" Message 3 (ACK) lets the client confirm "yes." After two messages only the server knows the link works in both directions; the third is what gives the <em>client</em> that same certainty. Two messages can't prove a two-way channel.</p>
+</details>
 
 <div class="tryit">
   <span class="label">🖥️ Try it now — watch a real handshake</span>
@@ -516,7 +522,7 @@ dig google.com</code></pre>
 
 <div class="note">
   <span class="label">📝 Why you can't fix latency with a bigger plan</span>
-  <p>Here's the trap. A server in Australia talking to a user in Germany has high latency no matter how much bandwidth either side buys, because the distance is fixed and light itself takes time to cross it (roughly 1 millisecond per 100 km, and that's the theoretical floor — reality is slower). Widening the pipe does nothing for a signal that simply has far to travel. This is why "just upgrade the connection" doesn't fix a laggy long-distance app, and why we put servers physically close to users (Phase 20's cloud regions and CDNs). It's also why making <em>many</em> tiny requests is so costly: each one pays the full latency toll again — the exact same "fixed per-request overhead" shape you met in Phase 1's disk race and syscall question, now wearing a network costume.</p>
+  <p>Here's the trap. A server in Australia talking to a user in Germany has high latency no matter how much bandwidth either side buys, because the distance is fixed and light itself takes time to cross it (roughly 1 millisecond per 100 km, and that's the theoretical floor — reality is slower). Widening the pipe does nothing for a signal that simply has far to travel. This is why "just upgrade the connection" doesn't fix a laggy long-distance app, and why we put servers physically close to users (Phase 20's cloud regions and CDNs). It's also why making <em>many</em> tiny requests is so costly: each one pays the full latency toll again — the exact same "fixed per-request overhead" shape you met in <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>'s disk race and syscall question, now wearing a network costume.</p>
 </div>
 
 <p>A concrete way to feel it: a transfer's total time is roughly <em>(latency to get started) + (amount of data ÷ bandwidth)</em>. For a huge file, the second term dominates and bandwidth is king. For a tiny 200-byte database reply, the second term is a rounding error and latency is everything. Great system design is largely the art of not paying latency more times than you have to.</p>
@@ -591,7 +597,7 @@ ping -c 5 example.com</code></pre>
 
 <div class="note">
   <span class="label">📝 Where the socket sits</span>
-  <p>The <code>socket</code> we're about to program is your code's doorway to the transport layer (TCP). You hand a socket some bytes; TCP, IP, and the WiFi driver — all living inside the kernel (Phase 1's superintendent) — handle every layer below. That's why we can build a "web server" without ever writing a single line about routers or radio waves: the layers below the socket are somebody else's solved problem. You get to stand on top of decades of it.</p>
+  <p>The <code>socket</code> we're about to program is your code's doorway to the transport layer (TCP). You hand a socket some bytes; TCP, IP, and the WiFi driver — all living inside the kernel (<a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>'s superintendent) — handle every layer below. That's why we can build a "web server" without ever writing a single line about routers or radio waves: the layers below the socket are somebody else's solved problem. You get to stand on top of decades of it.</p>
 </div>
 
 <h2 id="ph">Part H — Firewalls, NAT &amp; VPNs: gatekeepers and disguises</h2>
@@ -638,42 +644,42 @@ ping -c 5 example.com</code></pre>
 
 <h3>The five system calls that are a web server</h3>
 
-<p>Strip away everything and a TCP server is five kernel requests (Phase 1's syscalls — the doorbell), always in this order. Here's the heart of <code>server.py</code>:</p>
+<p>Strip away everything and a TCP server is five kernel requests (<a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>'s <span class="term" tabindex="0" data-def="A request from your program to the OS kernel to do something it can't do directly — here, network operations like accept and recv.">syscalls</span> — the doorbell), always in this order. Here's the heart of <code>server.py</code>:</p>
 
 <pre><code><span class="c"># 1. socket(): ask the OS for a network endpoint (an unplugged phone).</span>
 <span class="c">#    AF_INET = IPv4 addresses; SOCK_STREAM = TCP (reliable, ordered).</span>
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket = socket.<span class="fn">socket</span>(socket.AF_INET, socket.SOCK_STREAM)
 
 <span class="c"># SO_REUSEADDR: let us re-grab the port immediately after a restart,</span>
 <span class="c"># instead of waiting out TCP's ~30s TIME_WAIT cool-down.</span>
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.<span class="fn">setsockopt</span>(socket.SOL_SOCKET, socket.SO_REUSEADDR, <span class="num">1</span>)
 
 <span class="c"># 2. bind(): claim an address (all interfaces) and a port (8000).</span>
-server_socket.bind((HOST, PORT))
+server_socket.<span class="fn">bind</span>((HOST, PORT))
 
 <span class="c"># 3. listen(): start queueing incoming connections (hold up to 16 waiting).</span>
-server_socket.listen(16)
+server_socket.<span class="fn">listen</span>(<span class="num">16</span>)
 
-while True:
+<span class="kw">while</span> <span class="kw">True</span>:
     <span class="c"># 4. accept(): BLOCK until a client finishes the 3-way handshake,</span>
     <span class="c">#    then return a NEW socket dedicated to that one client.</span>
-    conn, addr = server_socket.accept()
-    handle_connection(conn, addr)   <span class="c"># read request, send response</span>
-    conn.close()                    <span class="c"># 5. close(): hang up.</span></code></pre>
+    conn, addr = server_socket.<span class="fn">accept</span>()
+    <span class="fn">handle_connection</span>(conn, addr)   <span class="c"># read request, send response</span>
+    conn.<span class="fn">close</span>()                    <span class="c"># 5. close(): hang up.</span></code></pre>
 
-<p>That's the whole shape of every TCP server that has ever existed — Nginx, Postgres, your future LinkBoard at scale. Frameworks add convenience on top; this loop is always underneath. Notice <code>accept()</code> is exactly Phase 1's blocking I/O: the server sits there doing nothing, off the CPU entirely, until a connection wakes it.</p>
+<p>That's the whole shape of every TCP server that has ever existed — Nginx, Postgres, your future LinkBoard at scale. Frameworks add convenience on top; this loop is always underneath. Notice <code>accept()</code> is exactly Phase 1's <span class="term" tabindex="0" data-def="A call that stops your program and takes it off the CPU until data or a connection is ready, then resumes exactly where it paused.">blocking I/O</span>: the server sits there doing nothing, off the CPU entirely, until a connection wakes it.</p>
 
 <h3>Reading the request: bytes are a stream, not a message</h3>
 
 <p>The most important lesson hiding in the code is in how we <em>read</em>. A beginner expects "one recv() call gives me the whole request." TCP does not work that way. TCP hands you a <strong>stream of bytes with no built-in message boundaries</strong> — the request might arrive in one chunk or twenty, and you don't get to know in advance. So the server loops, collecting pieces, until it sees the blank line (<code>\r\n\r\n</code>) that HTTP uses to mark the end of the headers:</p>
 
-<pre><code>received = b""
-while b"\r\n\r\n" not in received:      <span class="c"># until we see "end of headers"</span>
-    chunk = conn.recv(1024)             <span class="c"># BLOCKS; may return 1 byte or 1000</span>
-    if chunk == b"":                    <span class="c"># empty = the client hung up</span>
-        return
+<pre><code>received = <span class="str">b""</span>
+<span class="kw">while</span> <span class="str">b"\r\n\r\n"</span> <span class="kw">not in</span> received:      <span class="c"># until we see "end of headers"</span>
+    chunk = conn.<span class="fn">recv</span>(<span class="num">1024</span>)             <span class="c"># BLOCKS; may return 1 byte or 1000</span>
+    <span class="kw">if</span> chunk == <span class="str">b""</span>:                    <span class="c"># empty = the client hung up</span>
+        <span class="kw">return</span>
     received += chunk
-    log("RECV", f"got chunk of {len(chunk)} bytes ...")</code></pre>
+    <span class="fn">log</span>(<span class="str">"RECV"</span>, <span class="str">f"got chunk of {len(chunk)} bytes ..."</span>)</code></pre>
 
 <p>Every loop iteration logs the chunk size — which is how <code>slow_client.py</code> makes its point visible: it sends the request one byte at a time, so you'll see the server dutifully log <code>[RECV] got chunk of 1 bytes</code> over and over, stuck, unable to serve anyone else. That's the deliberate flaw, and it's the whole reason the slow client exists.</p>
 
@@ -682,13 +688,13 @@ while b"\r\n\r\n" not in received:      <span class="c"># until we see "end of h
 <p>An HTTP response is plain text: a status line, some <code>Label: value</code> headers, one blank line, then the page. The <code>build_response</code> helper assembles it and — crucially — encodes it to <strong>bytes</strong>, because sockets carry only bytes, never Python strings (Phase 1, Part A: text is numbers plus an agreement, and UTF-8 is the agreement):</p>
 
 <pre><code>headers = (
-    f"{status_line}\r\n"                            <span class="c"># "HTTP/1.1 200 OK"</span>
-    f"Content-Type: {content_type}; charset=utf-8\r\n"
-    f"Content-Length: {len(body_bytes)}\r\n"        <span class="c"># how many body bytes follow</span>
-    f"Connection: close\r\n"                         <span class="c"># "I'll hang up after this"</span>
-    f"\r\n"                                           <span class="c"># the sacred blank line</span>
+    <span class="str">f"{status_line}\r\n"</span>                            <span class="c"># "HTTP/1.1 200 OK"</span>
+    <span class="str">f"Content-Type: {content_type}; charset=utf-8\r\n"</span>
+    <span class="str">f"Content-Length: {len(body_bytes)}\r\n"</span>        <span class="c"># how many body bytes follow</span>
+    <span class="str">f"Connection: close\r\n"</span>                         <span class="c"># "I'll hang up after this"</span>
+    <span class="str">f"\r\n"</span>                                           <span class="c"># the sacred blank line</span>
 )
-return headers.encode("utf-8") + body_bytes</code></pre>
+<span class="kw">return</span> headers.<span class="fn">encode</span>(<span class="str">"utf-8"</span>) + body_bytes</code></pre>
 
 <p>The <code>Content-Length</code> line matters more than it looks: it tells the client exactly how many body bytes to expect, so the client knows when the page is fully arrived instead of waiting forever for more. We'll parse requests and set status codes properly in Phase 3; for now the point is that a "response" is nothing but bytes in a shape both sides agreed on.</p>
 
@@ -776,7 +782,16 @@ curl -i localhost:8000/nope</code></pre>
 
 <p><strong>Watch what happens: the curl in terminal 3 HANGS.</strong> It sits there, getting no response, no logs about it in terminal 1 — nothing — until the slow client in terminal 2 <em>completely finishes</em>. Only then does terminal 1 print <code>[CONN] #6</code> and serve terminal 3's request, and the hung curl suddenly completes.</p>
 
-<p><strong>What this proves — and why it's the whole point:</strong> our server handles exactly one connection at a time. It's stuck in <code>recv()</code> waiting on the slow client (blocking I/O, Part E of Phase 1), so it literally cannot reach the next <code>accept()</code> to notice terminal 3 knocking. One slow visitor froze the entire shop for everyone. This is not a bug in our code — it's the fundamental limitation of the single-connection design, and feeling it here is what makes every later scaling technique (threads, async, multiple processes, load balancers) <em>obviously necessary</em> instead of arbitrary. We keep the flaw this phase on purpose; we earn the fixes later.</p>
+<p><strong>What this proves — and why it's the whole point:</strong> our server handles exactly one connection at a time. It's stuck in <code>recv()</code> waiting on the slow client (blocking I/O, Part H of <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>), so it literally cannot reach the next <code>accept()</code> to notice terminal 3 knocking. One slow visitor froze the entire shop for everyone. This is not a bug in our code — it's the fundamental limitation of the single-connection design, and feeling it here is what makes every later scaling technique (threads, async, multiple processes, load balancers) <em>obviously necessary</em> instead of arbitrary. We keep the flaw this phase on purpose; we earn the fixes later.</p>
+
+<details class="check">
+  <summary>Quick check: is the frozen server a bug you should fix by writing more careful code?</summary>
+  <p>No — and that's the whole point. The freeze is the unavoidable consequence of a <em>design</em> choice: one connection handled start-to-finish before the next is accepted. No amount of tidier code removes it; only a different architecture does (a thread/process per connection, or a non-blocking event loop). Recognising "this is a design limit, not a coding mistake" is exactly the judgement that separates memorised patterns from real system-design reasoning.</p>
+</details>
+
+<div class="realworld">
+  <p>You've just walked into one of the most-asked systems-design interview arcs, from the ground floor. "Here's a server that handles one connection at a time — how do you make it serve thousands?" is a question you can now answer from mechanism, not memory: thread-per-connection (simple, memory-heavy), process-per-connection (isolated, heavier), or a single-threaded event loop (scales furthest, hardest to reason about) — and in production, usually a blend (a pool of processes each running an event loop, behind a load balancer). Every one of those is a later phase of this course. Keeping the naive server in front of you is what makes each fix feel <em>earned</em> rather than cargo-culted.</p>
+</div>
 
 <h3>Step 4 — stop the server</h3>
 

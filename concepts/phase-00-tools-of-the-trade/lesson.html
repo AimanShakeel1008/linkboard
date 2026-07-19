@@ -31,6 +31,7 @@
       <a href="#s15">15. Challenges &amp; Questions</a>
     </nav>
     <div class="toc-bottom">
+      <a href="../index.html">↑ Course hub &amp; roadmap</a>
       <a href="../phase-01-how-a-computer-works/lesson.html">Next: Phase 01 →</a>
     </div>
   </div>
@@ -481,7 +482,7 @@ find . -name "*.tmp" -delete  <span class="c"># find AND delete — always run i
 
 <pre><code>tail -f server.log</code></pre>
 
-<p>This is how you watch a live server breathe. From Phase 2 onward you'll often have two terminals open: one running the app, one following its log. To stop it, press <code>Ctrl+C</code> — and that's worth stating as a general rule: <strong><code>Ctrl+C</code> stops whatever program is currently running in your terminal.</strong></p>
+<p>This is how you watch a live server breathe. From <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> onward you'll often have two terminals open: one running the app, one following its log. To stop it, press <code>Ctrl+C</code> — and that's worth stating as a general rule: <strong><code>Ctrl+C</code> stops whatever program is currently running in your terminal.</strong></p>
 
 <h2 id="s4"><span class="secno">4.</span> Processes: programs in motion</h2>
 
@@ -489,18 +490,18 @@ find . -name "*.tmp" -delete  <span class="c"># find AND delete — always run i
 
 <p>A program sitting on your disk — <code>chrome.exe</code>, <code>python</code> — is just a file: a recipe, doing nothing. When you <em>run</em> it, the OS loads it into memory, gives it CPU time, and it starts actually doing things. A running instance of a program is called a <strong>process</strong>.</p>
 
-<p>The recipe/dish distinction matters: open Chrome three times and you have ONE program but THREE processes — three separately running instances. The OS gives every process a unique ID number, its <strong>PID</strong> (process ID) — think of it as the ticket number the OS uses to refer to that specific running instance. (Phase 1 goes much deeper into processes: threads, scheduling, what "using the CPU" physically means.)</p>
+<p>The recipe/dish distinction matters: open Chrome three times and you have ONE program but THREE processes — three separately running instances. The OS gives every process a unique ID number, its <strong>PID</strong> (process ID) — think of it as the ticket number the OS uses to refer to that specific running instance. (<a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a> goes much deeper into processes: threads, scheduling, what "using the CPU" physically means.)</p>
 
 <h3>4.2 Seeing what's running</h3>
 
-<pre><code>ps aux
+<pre><code><span class="fn">ps</span> aux
 <span class="c"># A snapshot ("ps" = processes) of everything running right now, one line each.</span>
 
-ps aux | grep python
+<span class="fn">ps</span> aux | <span class="fn">grep</span> python
 <span class="c"># The same snapshot, piped through grep → only lines mentioning python.</span>
 <span class="c"># (Notice: you already know both halves of this. Pipes compose everything.)</span>
 
-top
+<span class="fn">top</span>
 <span class="c"># A LIVE dashboard that refreshes every few seconds. Press q to quit.</span></code></pre>
 
 <p>In <code>ps aux</code>, the columns worth reading: <code>USER</code> (who started it), <code>PID</code> (its ticket number), <code>%CPU</code> and <code>%MEM</code> (how much of the machine it's using), and the command itself at the end of the line. In <code>top</code>, processes are sorted with the biggest CPU user on top — so a misbehaving process literally rises to the top of the screen. A process showing 100% is fully using one CPU core.</p>
@@ -509,8 +510,8 @@ top
 
 <p>You don't stop a process by deleting something — you send it a <strong>signal</strong>: a tiny standardized message the OS delivers to the process. The two you need:</p>
 
-<pre><code>kill 1234        <span class="c"># sends the signal SIGTERM to the process whose PID is 1234</span>
-kill -9 1234     <span class="c"># sends the signal SIGKILL to it</span></code></pre>
+<pre><code><span class="fn">kill</span> <span class="num">1234</span>        <span class="c"># sends the signal SIGTERM to the process whose PID is 1234</span>
+<span class="fn">kill</span> -9 <span class="num">1234</span>     <span class="c"># sends the signal SIGKILL to it</span></code></pre>
 
 <p>Despite the scary name, <code>kill</code> just means "send a signal", and the two signals differ enormously:</p>
 
@@ -525,10 +526,15 @@ kill -9 1234     <span class="c"># sends the signal SIGKILL to it</span></code><
 
 <p>Two helper commands so you don't have to hunt PIDs by eye:</p>
 
-<pre><code>pgrep -f runaway.sh    <span class="c"># print the PID(s) of processes whose command matches "runaway.sh"</span>
-pkill -f runaway.sh    <span class="c"># find them AND send SIGTERM, in one step</span></code></pre>
+<pre><code><span class="fn">pgrep</span> -f runaway.sh    <span class="c"># print the PID(s) of processes whose command matches "runaway.sh"</span>
+<span class="fn">pkill</span> -f runaway.sh    <span class="c"># find them AND send SIGTERM, in one step</span></code></pre>
 
 <p>Why this matters beyond today: the idea of a program <em>reacting to SIGTERM by finishing its current work before exiting</em> is called <strong>graceful shutdown</strong>, and it is a big deal in real systems — every time Kubernetes (Phase 19) updates your app, it stops the old copy by sending exactly this signal. The playground's <code>runaway.sh</code> lets you <em>watch</em> the difference: it says a polite goodbye when SIGTERMed, and vanishes silently when SIGKILLed.</p>
+
+<details class="check">
+  <summary>Quick check: your app is stuck. Which do you send first, <code>kill</code> or <code>kill -9</code>, and why?</summary>
+  <p>Plain <code>kill</code> first (SIGTERM). It's a polite <em>request</em> that gives the program a chance to finish writing its files, close connections, and exit cleanly — a graceful shutdown. <code>kill -9</code> (SIGKILL) can't be caught or handled; the OS deletes the process mid-action, so anything it was half-way through writing is lost. Reach for <code>-9</code> only when the polite version is ignored. (This is exactly why <code>kill -9</code> on a database is dangerous — Challenge 6 at the end.)</p>
+</details>
 
 <h2 id="s5"><span class="secno">5.</span> Talking to networks (a first taste — Phase 2 covers this deeply)</h2>
 
@@ -542,7 +548,7 @@ curl -v https://example.com   <span class="c"># -v (verbose): show the ENTIRE co
 
 <p>From Phase 4 onward, <code>curl</code> is how you'll poke LinkBoard's API directly, no browser needed.</p>
 
-<p><strong><code>dig</code> — look something up in the internet's phone book.</strong> Humans use names like <code>example.com</code>; computers actually connect to numeric addresses (IP addresses). The worldwide system that translates names into numbers is called <strong>DNS</strong>, and <code>dig example.com</code> performs one lookup and shows you the answer. The full story — who maintains the phone book, how answers get cached — is a highlight of Phase 2.</p>
+<p><strong><code>dig</code> — look something up in the internet's phone book.</strong> Humans use names like <code>example.com</code>; computers actually connect to numeric addresses (IP addresses). The worldwide system that translates names into numbers is called <strong>DNS</strong>, and <code>dig example.com</code> performs one lookup and shows you the answer. The full story — who maintains the phone book, how answers get cached — is a highlight of <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a>.</p>
 
 <p>Also in the toolbox for later: <code>ping some-site.com</code> ("are you reachable, and how many milliseconds away?") and <code>ss -tlnp</code> ("which programs on <em>my</em> machine are currently listening for network connections?" — this becomes essential from Phase 2 on, e.g. to answer "is something already using port 8000?").</p>
 
@@ -667,7 +673,7 @@ crontab -e    <span class="c"># edit them (opens an editor)</span></code></pre>
 <span class="c">#   the OS reads this line to learn WHICH program should interpret the rest.</span>
 <span class="c">#   This exact spelling means "find bash and use it."</span>
 
-set -euo pipefail
+<span class="kw">set</span> -euo pipefail
 <span class="c"># Three safety switches, worth putting in every script you ever write:</span>
 <span class="c">#   -e            if any command fails, STOP the script immediately</span>
 <span class="c">#                 (instead of blindly continuing into chaos)</span>
@@ -677,28 +683,33 @@ set -euo pipefail
 <span class="c">#                 whole pipeline counts as failed (normally only the last</span>
 <span class="c">#                 stage's result matters — a surprising default)</span>
 
-NAME="LinkBoard"        <span class="c"># a variable. IMPORTANT: no spaces around the = sign.</span>
-echo "Hello from $NAME" <span class="c"># read a variable with $. Double quotes: $ works inside.</span>
-echo 'Hello from $NAME' <span class="c"># single quotes: everything is literal → prints $NAME as-is.</span>
+NAME=<span class="str">"LinkBoard"</span>        <span class="c"># a variable. IMPORTANT: no spaces around the = sign.</span>
+<span class="fn">echo</span> <span class="str">"Hello from $NAME"</span> <span class="c"># read a variable with $. Double quotes: $ works inside.</span>
+<span class="fn">echo</span> <span class="str">'Hello from $NAME'</span> <span class="c"># single quotes: everything is literal → prints $NAME as-is.</span>
 
-TODAY=$(date +%F)
+TODAY=$(<span class="fn">date</span> +%F)
 <span class="c"># $( ... ) is "command substitution": run the command inside the parentheses,</span>
 <span class="c"># and use whatever it PRINTS as a value. Here: TODAY becomes e.g. 2026-07-16.</span>
 
-if [ -f server.log ]; then     <span class="c"># [ ... ] is a test. -f asks "does this file exist?"</span>
-  echo "the log exists"
-else
-  echo "no log yet"
-fi
+<span class="kw">if</span> [ -f server.log ]; <span class="kw">then</span>     <span class="c"># [ ... ] is a test. -f asks "does this file exist?"</span>
+  <span class="fn">echo</span> <span class="str">"the log exists"</span>
+<span class="kw">else</span>
+  <span class="fn">echo</span> <span class="str">"no log yet"</span>
+<span class="kw">fi</span>
 
-for i in 1 2 3; do             <span class="c"># a loop: runs the body once per item</span>
-  echo "round $i"
-done
+<span class="kw">for</span> i <span class="kw">in</span> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span>; <span class="kw">do</span>             <span class="c"># a loop: runs the body once per item</span>
+  <span class="fn">echo</span> <span class="str">"round $i"</span>
+<span class="kw">done</span>
 
-greet() {                      <span class="c"># a function: a named, reusable block</span>
-  echo "hi, $1"                <span class="c"># inside a function, $1 is its first argument</span>
+<span class="fn">greet</span>() {                      <span class="c"># a function: a named, reusable block</span>
+  <span class="fn">echo</span> <span class="str">"hi, $1"</span>                <span class="c"># inside a function, $1 is its first argument</span>
 }
-greet "aiman"                  <span class="c"># prints: hi, aiman</span></code></pre>
+<span class="fn">greet</span> <span class="str">"aiman"</span>                  <span class="c"># prints: hi, aiman</span></code></pre>
+
+<div class="note">
+  <span class="label">A note on the colours in code blocks</span>
+  <p>Notice the block above is lightly colour-coded to help you scan it: <strong>keywords</strong> (<code>set</code>, <code>if</code>, <code>for</code>, <code>do</code>) in purple, <strong>command &amp; function names</strong> (<code>echo</code>, <code>date</code>, <code>greet</code>) in gold, <strong>"text strings"</strong> in green, <strong>numbers</strong> in amber, and <strong>comments</strong> in grey. The colours are only a reading aid — the code means exactly the same thing in black and white, and you never type them.</p>
+</div>
 
 <h3>9.1 Exit codes: how programs report success or failure <span class="chip">CS fundamental</span></h3>
 
@@ -713,15 +724,15 @@ greet "aiman"                  <span class="c"># prints: hi, aiman</span></code>
 
 <p>Why report success as a <em>number</em> instead of a message? Because numbers can be checked <em>automatically by other programs</em>. A human can read "No such file or directory"; a script cannot — but a script can trivially check "was the exit code 0?"</p>
 
-<p>The shell keeps the exit code of the most recent command in a special variable spelled <code>$?</code>.</p>
+<p>The <span class="term" tabindex="0" data-def="The program that reads the commands you type and runs them; bash is the standard Linux shell.">shell</span> keeps the exit code of the most recent command in a special variable spelled <code>$?</code>.</p>
 
 <div class="tryit">
   <span class="label">🖥️ Try it now</span>
-<pre><code>ls /home
-echo $?        <span class="c"># prints 0 — ls succeeded</span>
+<pre><code><span class="fn">ls</span> /home
+<span class="fn">echo</span> $?        <span class="c"># prints 0 — ls succeeded</span>
 
-ls /folder-that-does-not-exist
-echo $?        <span class="c"># prints 2 — ls failed, and said so via its exit code</span></code></pre>
+<span class="fn">ls</span> /folder-that-does-not-exist
+<span class="fn">echo</span> $?        <span class="c"># prints 2 — ls failed, and said so via its exit code</span></code></pre>
 </div>
 
 <p>Now connect this to things you've already seen — each of these is secretly built on exit codes:</p>
@@ -734,6 +745,15 @@ echo $?        <span class="c"># prints 2 — ls failed, and said so via its exi
 </ul>
 
 <p>One convention, used identically from a two-line script to a company's deployment system.</p>
+
+<div class="realworld">
+  <p>This tiny "0 means success" rule is the hinge that automated deployment swings on. When a company ships code, a machine (not a person) runs the test suite and looks at exactly one thing: the <strong>exit code</strong>. Zero → the change is allowed to go live. Non-zero → the pipeline halts and nobody ships. Interviewers love this because it reveals whether you understand that <em>tools compose through simple contracts</em>: <code>grep</code>, <code>make</code>, <code>pytest</code>, Docker, and a cloud deploy system all agree on the same one-number handshake. You'll wire up exactly this in <strong>Phase 18 (CI/CD)</strong>.</p>
+</div>
+
+<details class="check">
+  <summary>Quick check: how does <code>if</code> decide whether to run its <code>then</code> branch?</summary>
+  <p>It reads an <strong>exit code</strong> — nothing else. <code>if</code> runs the command after it (for <code>if [ -f x ]</code>, that command is the program <code>[</code>), and if that command exits with <strong>0</strong> it runs the <code>then</code> branch; any non-zero code sends it to <code>else</code>. <code>if</code> never "understands" the test — it only checks whether the number was zero. That's why <em>any</em> command can follow <code>if</code>, not just <code>[ … ]</code>.</p>
+</details>
 
 <h2 id="s10"><span class="secno">10.</span> Git from the inside out</h2>
 

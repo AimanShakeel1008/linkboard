@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkBoard — Course Hub &amp; Roadmap</title>
+<link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<div class="page">
+
+<aside class="toc">
+  <div class="toc-inner">
+    <p class="toc-phase">Course Hub</p>
+    <nav>
+      <a href="#roadmap">The roadmap</a>
+      <a href="#legend">Legend</a>
+      <a href="#part-1">Part I — Bedrock</a>
+      <a href="#part-2">Part II — Building LinkBoard</a>
+      <a href="#part-3">Part III — Scaling Reads</a>
+      <a href="#part-4">Part IV — Async &amp; Data</a>
+      <a href="#part-5">Part V — Real-Time &amp; Writes</a>
+      <a href="#part-6">Part VI — Production</a>
+      <a href="#part-7">Part VII — Cloud &amp; Design</a>
+      <a href="#part-8">Part VIII — AI &amp; Capstone</a>
+    </nav>
+    <div class="toc-bottom">
+      <a href="phase-02-internet-and-protocols/lesson.html">Jump to current lesson →</a>
+    </div>
+  </div>
+</aside>
+
+<main>
+
+<header class="lesson">
+  <p class="kicker">LinkBoard · System Design, Built From Scratch</p>
+  <h1>Course Hub &amp; Roadmap</h1>
+  <p class="covers">One place to see the whole journey: every chapter and lesson, where you are right now, and what comes next. We build a real Hacker News&ndash;style link platform one layer at a time &mdash; from raw sockets up to a scaled, observable, cloud-run system. <strong>Start at the top and work down.</strong></p>
+</header>
+
+<div class="note">
+  <span class="label">How to use this page</span>
+  <p>The roadmap shows the eight major <strong>stages</strong> of the course. Below it, every <strong>phase</strong> is listed with a status badge: <span class="status status-done">Done</span> lessons are finished and clickable, <span class="status status-now">Now</span> is the one we're building, and <span class="status status-planned">Planned</span> phases are on the map but not written yet. This page is updated whenever a lesson is added or completed.</p>
+</div>
+
+<h2 id="roadmap"><span class="secno">1.</span> The roadmap &mdash; you are here</h2>
+
+<p>The course is a straight climb through eight stages. Each stage groups several phases that share a theme. You are at the very start of the climb, in <strong>Bedrock</strong>.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 760 150" role="img" aria-label="Course roadmap of eight stages from left to right: stage one Bedrock (you are here now), stage two Build, stage three Scale reads, stage four Async, stage five Real-time and write scaling, stage six Production, stage seven Cloud, stage eight AI and capstone. You are currently in stage one, Bedrock.">
+    <defs>
+      <marker id="rm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" class="fig-arrow"/>
+      </marker>
+    </defs>
+
+    <!-- connectors between the eight stages -->
+    <line x1="75.5"  y1="60" x2="114.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="170.5" y1="60" x2="209.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="265.5" y1="60" x2="304.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="360.5" y1="60" x2="399.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="455.5" y1="60" x2="494.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="550.5" y1="60" x2="589.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+    <line x1="645.5" y1="60" x2="684.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
+
+    <!-- "you are here" pointer over the first stage -->
+    <text x="8" y="16" class="fig-youhere">&#9662; You are here</text>
+
+    <!-- stage 1: Bedrock (NOW) -->
+    <circle cx="47.5"  cy="60" r="26" class="fig-stage-now"/>
+    <text x="47.5"  y="66"  text-anchor="middle" class="fig-stage-num">I</text>
+    <text x="47.5"  y="106" text-anchor="middle" class="fig-t-sm">Bedrock</text>
+
+    <!-- stage 2: Build -->
+    <circle cx="142.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="142.5" y="66"  text-anchor="middle" class="fig-stage-num">II</text>
+    <text x="142.5" y="106" text-anchor="middle" class="fig-t-sm">Build</text>
+
+    <!-- stage 3: Scale reads -->
+    <circle cx="237.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="237.5" y="66"  text-anchor="middle" class="fig-stage-num">III</text>
+    <text x="237.5" y="106" text-anchor="middle" class="fig-t-sm">Scale reads</text>
+
+    <!-- stage 4: Async -->
+    <circle cx="332.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="332.5" y="66"  text-anchor="middle" class="fig-stage-num">IV</text>
+    <text x="332.5" y="106" text-anchor="middle" class="fig-t-sm">Async data</text>
+
+    <!-- stage 5: Real-time & writes -->
+    <circle cx="427.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="427.5" y="66"  text-anchor="middle" class="fig-stage-num">V</text>
+    <text x="427.5" y="106" text-anchor="middle" class="fig-t-sm">Real-time</text>
+
+    <!-- stage 6: Production -->
+    <circle cx="522.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="522.5" y="66"  text-anchor="middle" class="fig-stage-num">VI</text>
+    <text x="522.5" y="106" text-anchor="middle" class="fig-t-sm">Production</text>
+
+    <!-- stage 7: Cloud -->
+    <circle cx="617.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="617.5" y="66"  text-anchor="middle" class="fig-stage-num">VII</text>
+    <text x="617.5" y="106" text-anchor="middle" class="fig-t-sm">Cloud</text>
+
+    <!-- stage 8: AI & capstone -->
+    <circle cx="712.5" cy="60" r="26" class="fig-stage-todo"/>
+    <text x="712.5" y="66"  text-anchor="middle" class="fig-stage-num">VIII</text>
+    <text x="712.5" y="106" text-anchor="middle" class="fig-t-sm">AI &amp; capstone</text>
+  </svg>
+  <figcaption>The eight stages of the course, left to right. <strong>Orange</strong> is the stage you're on now (Bedrock); <strong>grey</strong> stages are planned and still ahead; a <strong>green</strong> stage (none yet) means every phase inside it is finished. The same three colours label every phase in the list below, so the map and the list always agree.</figcaption>
+</figure>
+
+<h2 id="legend"><span class="secno">2.</span> Legend</h2>
+
+<ul>
+  <li><span class="status status-done">Done</span> &mdash; the lesson is written and the project runs end-to-end at that phase. The row links straight to it.</li>
+  <li><span class="status status-now">Now</span> &mdash; the phase we're actively building. Also clickable.</li>
+  <li><span class="status status-planned">Planned</span> &mdash; on the roadmap, not written yet. Shown greyed and not clickable.</li>
+</ul>
+
+<h2 id="part-1"><span class="secno">3.</span> Part I &mdash; Bedrock</h2>
+<p class="hub-part">The ground everything else stands on</p>
+<ul class="hub-list">
+  <li><a class="hub-row" href="phase-00-tools-of-the-trade/lesson.html">
+    <span class="hub-num">P00</span>
+    <span class="hub-title">Tools of the Trade: Linux &amp; Git <small>M23, M28 &mdash; the terminal, processes, and Git from the inside out</small></span>
+    <span class="status status-done">Done</span>
+  </a></li>
+  <li><a class="hub-row" href="phase-01-how-a-computer-works/lesson.html">
+    <span class="hub-num">P01</span>
+    <span class="hub-title">How a Computer Actually Works <small>M6, M7 &mdash; binary, CPU/RAM, processes, threads, blocking I/O</small></span>
+    <span class="status status-done">Done</span>
+  </a></li>
+  <li><a class="hub-row" href="phase-02-internet-and-protocols/lesson.html">
+    <span class="hub-num">P02</span>
+    <span class="hub-title">The Internet &amp; Protocols <small>M1, M2 &mdash; packets, IP, DNS, TCP/UDP; the raw-socket server is born</small></span>
+    <span class="status status-now">Now</span>
+  </a></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P03</span>
+    <span class="hub-title">HTTP Deep Dive <small>M3 &mdash; methods, status codes, headers, cookies, TLS</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-2"><span class="secno">4.</span> Part II &mdash; Building LinkBoard</h2>
+<p class="hub-part">Turning the toy server into a real application</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P04</span>
+    <span class="hub-title">LinkBoard v1: APIs &amp; REST <small>M9</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P05</span>
+    <span class="hub-title">The Browser: LinkBoard Gets a Frontend <small>M4</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P06</span>
+    <span class="hub-title">Databases: PostgreSQL <small>M8, M15 (PG-advanced)</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P07</span>
+    <span class="hub-title">Security Basics &amp; Authentication <small>M10, M3.9</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-3"><span class="secno">5.</span> Part III &mdash; Scaling Reads &amp; Ops Basics</h2>
+<p class="hub-part">The first taste of "it's slow now"</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P08</span>
+    <span class="hub-title">Caching &amp; Redis in Depth <small>M5, M11</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P09</span>
+    <span class="hub-title">Docker, Nginx &amp; Horizontal Scaling <small>M19, M22</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-4"><span class="secno">6.</span> Part IV &mdash; Async &amp; Data Systems</h2>
+<p class="hub-part">Work that happens after you say "done"</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P10</span>
+    <span class="hub-title">Message Queues: RabbitMQ, SQS &amp; SNS <small>M17, M18</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P11</span>
+    <span class="hub-title">Kafka &amp; Event Streaming <small>M16</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P12</span>
+    <span class="hub-title">Search: Elasticsearch <small>M14</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P13</span>
+    <span class="hub-title">NoSQL Landscape: MongoDB &amp; Choosing Databases <small>M12, M15</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-5"><span class="secno">7.</span> Part V &mdash; Real-Time &amp; Scaling Writes</h2>
+<p class="hub-part">Pushing data out, and surviving lots of it coming in</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P14</span>
+    <span class="hub-title">Real-Time: WebSockets &amp; Live Updates <small>M4.7</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P15</span>
+    <span class="hub-title">Scaling Writes: Replication, Cassandra &amp; CAP <small>M13, M15</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-6"><span class="secno">8.</span> Part VI &mdash; Production Engineering</h2>
+<p class="hub-part">Making it something you can operate, not just run</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P16</span>
+    <span class="hub-title">Observability <small>M26</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P17</span>
+    <span class="hub-title">Testing <small>M29</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P18</span>
+    <span class="hub-title">CI/CD <small>M21</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P19</span>
+    <span class="hub-title">Kubernetes <small>M20</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-7"><span class="secno">9.</span> Part VII &mdash; Cloud &amp; Advanced Design</h2>
+<p class="hub-part">The big-picture, interview-shaped chapters</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P20</span>
+    <span class="hub-title">Cloud: AWS, GCP &amp; Azure <small>M24, M25</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P21</span>
+    <span class="hub-title">Advanced API Design <small>M30</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P22</span>
+    <span class="hub-title">Architecture Patterns &amp; DDD <small>M27</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P23</span>
+    <span class="hub-title">Data Engineering <small>M31, M15 (ClickHouse)</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P24</span>
+    <span class="hub-title">Advanced Security <small>M32</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<h2 id="part-8"><span class="secno">10.</span> Part VIII &mdash; AI &amp; Capstone</h2>
+<p class="hub-part">Tying it together</p>
+<ul class="hub-list">
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P25</span>
+    <span class="hub-title">AI-Native System Design <small>M33</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+  <li><div class="hub-row is-planned">
+    <span class="hub-num">P26</span>
+    <span class="hub-title">Capstone: Design Doc, Estimation Drills, Mock Interviews <small>&mdash;</small></span>
+    <span class="status status-planned">Planned</span>
+  </div></li>
+</ul>
+
+<footer class="next">
+  <span class="label">Where to go now</span>
+  <p>New here? Start with <a href="phase-00-tools-of-the-trade/lesson.html">Phase 00 &mdash; Tools of the Trade</a>. Already moving? The current lesson is <a href="phase-02-internet-and-protocols/lesson.html">Phase 02 &mdash; The Internet &amp; Protocols</a>. This hub updates as each phase is finished.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
