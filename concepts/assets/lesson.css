@@ -93,9 +93,53 @@ main { animation: rise .6s ease-out .18s both; }
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid #e7e1d6;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
 }
 
-.toc .toc-bottom a { border-left: none; padding-left: 0; font-weight: 650; color: #e8590c; }
+/* prev/next lesson cards + the course-map pill that sit in the TOC footer.
+   A .nav-card shows a small "PREV/NEXT · PHASE NN" kicker over the lesson
+   title; .nav-map is the rounded pill linking the hub. */
+.nav-card {
+  display: block;
+  border: 1px solid #e7e1d6;
+  border-left: 4px solid #cdd5c9;
+  border-radius: 10px;
+  padding: .5rem .75rem;
+  background: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(60, 35, 10, .06);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.nav-card:hover { transform: translateY(-2px); border-left-color: #e8590c; box-shadow: 0 5px 14px rgba(60, 35, 10, .13); }
+.nav-label {
+  display: block;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #9aa0a6;
+  margin-bottom: .12rem;
+}
+.nav-title { display: block; font-size: .9rem; font-weight: 650; line-height: 1.3; color: #e8590c; }
+.nav-card:hover .nav-title { color: #7048e8; }
+
+.nav-map {
+  display: block;
+  text-align: center;
+  border: 1.5px solid #e7e1d6;
+  border-radius: 99px;
+  padding: .48rem .8rem;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  text-decoration: none;
+  transition: border-color .15s ease, color .15s ease, background .15s ease, transform .12s ease;
+}
+.nav-map:hover { border-color: #e8590c; color: #e8590c; background: #fff3e9; transform: translateY(-1px); }
 
 @media (max-width: 900px) {
   .page { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding-top: 1.5rem; }
@@ -387,7 +431,13 @@ footer.next :last-child { margin-bottom: 0; }
   .toc nav a { color: #8d95a3; border-left-color: #2b2f3a; }
   .toc nav a:hover { color: #ff9457; border-left-color: #ff9457; }
   .toc .toc-bottom { border-top-color: #2b2f3a; }
-  .toc .toc-bottom a { color: #ff9457; }
+  .nav-card { background: #191c24; border-color: #2b2f3a; border-left-color: #3a4150; box-shadow: none; }
+  .nav-card:hover { border-left-color: #ff9457; box-shadow: 0 5px 14px rgba(0, 0, 0, .4); }
+  .nav-label { color: #8d95a3; }
+  .nav-title { color: #ff9457; }
+  .nav-card:hover .nav-title { color: #9775fa; }
+  .nav-map { border-color: #2b2f3a; color: #8d95a3; }
+  .nav-map:hover { border-color: #ff9457; color: #ff9457; background: #2a1a0f; }
   .toc .toc-phase {
     background: #b34808;
     background: linear-gradient(135deg, #b34808 0%, #8a3305 60%, #4b2e9e 140%);
