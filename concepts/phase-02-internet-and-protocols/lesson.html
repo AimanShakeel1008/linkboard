@@ -100,60 +100,59 @@
 
 <p>When you load LinkBoard's homepage, the page doesn't arrive as one blob. It's sliced into many packets, each finds its own way across the world, and your computer reassembles them back into the original page in the right order. This happens for every image, every click, every everything.</p>
 
-<figure class="diagram">
-  <svg viewBox="0 0 660 300" role="img" aria-labelledby="dgm-packets-title">
-    <title id="dgm-packets-title">A message is chopped into numbered packets that hop through routers and are reassembled at the destination.</title>
+<figure class="fig">
+  <svg viewBox="0 0 660 300" role="img" aria-label="A home page (your content) is chopped into numbered packets that hop through a mesh of routers by different routes and are reassembled into the same page at the destination.">
     <defs>
       <marker id="pk-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path class="dgm-arrow" d="M0,0 L10,5 L0,10 z" fill="#aeb6c2"></path>
+        <path class="fig-arrow" d="M0,0 L10,5 L0,10 z"></path>
       </marker>
     </defs>
 
-    <!-- source message -->
-    <rect class="dgm-box" x="14" y="112" width="96" height="76" rx="8"></rect>
-    <text class="dgm-t" x="62" y="145" text-anchor="middle">Home</text>
-    <text class="dgm-t" x="62" y="165" text-anchor="middle">page</text>
-    <text class="dgm-t-sm" x="62" y="205" text-anchor="middle">one message</text>
+    <!-- source message (your content) -->
+    <rect class="fig-box-you" x="14" y="112" width="96" height="76" rx="8"></rect>
+    <text class="fig-t" x="62" y="145" text-anchor="middle">Home</text>
+    <text class="fig-t" x="62" y="165" text-anchor="middle">page</text>
+    <text class="fig-t-sm" x="62" y="205" text-anchor="middle">one message</text>
 
-    <!-- chopped into packets -->
-    <line class="dgm-edge" x1="112" y1="150" x2="150" y2="150" marker-end="url(#pk-arrow)"></line>
-    <rect class="dgm-box-teal" x="156" y="96" width="40" height="34" rx="6"></rect>
-    <text class="dgm-t-mono" x="176" y="118" text-anchor="middle">1</text>
-    <rect class="dgm-box-teal" x="156" y="134" width="40" height="34" rx="6"></rect>
-    <text class="dgm-t-mono" x="176" y="156" text-anchor="middle">2</text>
-    <rect class="dgm-box-teal" x="156" y="172" width="40" height="34" rx="6"></rect>
-    <text class="dgm-t-mono" x="176" y="194" text-anchor="middle">3</text>
-    <text class="dgm-t-sm" x="176" y="228" text-anchor="middle">packets</text>
+    <!-- chopped into packets (generic data in transit) -->
+    <line class="fig-edge" x1="112" y1="150" x2="150" y2="150" marker-end="url(#pk-arrow)"></line>
+    <rect class="fig-box" x="156" y="96" width="40" height="34" rx="6"></rect>
+    <text class="fig-mono" x="176" y="118" text-anchor="middle">1</text>
+    <rect class="fig-box" x="156" y="134" width="40" height="34" rx="6"></rect>
+    <text class="fig-mono" x="176" y="156" text-anchor="middle">2</text>
+    <rect class="fig-box" x="156" y="172" width="40" height="34" rx="6"></rect>
+    <text class="fig-mono" x="176" y="194" text-anchor="middle">3</text>
+    <text class="fig-t-sm" x="176" y="228" text-anchor="middle">packets</text>
 
-    <!-- router mesh -->
-    <circle class="dgm-node" cx="300" cy="90"  r="22"></circle>
-    <text class="dgm-t-mono" x="300" y="95" text-anchor="middle">R</text>
-    <circle class="dgm-node" cx="300" cy="210" r="22"></circle>
-    <text class="dgm-t-mono" x="300" y="215" text-anchor="middle">R</text>
-    <circle class="dgm-node" cx="410" cy="150" r="22"></circle>
-    <text class="dgm-t-mono" x="410" y="155" text-anchor="middle">R</text>
-    <circle class="dgm-node" cx="470" cy="90"  r="22"></circle>
-    <text class="dgm-t-mono" x="470" y="95" text-anchor="middle">R</text>
+    <!-- router mesh (network infrastructure) -->
+    <circle class="fig-node" cx="300" cy="90"  r="22"></circle>
+    <text class="fig-mono" x="300" y="95" text-anchor="middle">R</text>
+    <circle class="fig-node" cx="300" cy="210" r="22"></circle>
+    <text class="fig-mono" x="300" y="215" text-anchor="middle">R</text>
+    <circle class="fig-node" cx="410" cy="150" r="22"></circle>
+    <text class="fig-mono" x="410" y="155" text-anchor="middle">R</text>
+    <circle class="fig-node" cx="470" cy="90"  r="22"></circle>
+    <text class="fig-mono" x="470" y="95" text-anchor="middle">R</text>
 
     <!-- packets entering the mesh -->
-    <line class="dgm-edge" x1="198" y1="120" x2="280" y2="96"  marker-end="url(#pk-arrow)"></line>
-    <line class="dgm-edge" x1="198" y1="185" x2="280" y2="205" marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge" x1="198" y1="120" x2="280" y2="96"  marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge" x1="198" y1="185" x2="280" y2="205" marker-end="url(#pk-arrow)"></line>
     <!-- mesh interconnections (highlight two different routes) -->
-    <line class="dgm-edge-hi" x1="320" y1="105" x2="392" y2="138" marker-end="url(#pk-arrow)"></line>
-    <line class="dgm-edge" x1="320" y1="196" x2="392" y2="163" marker-end="url(#pk-arrow)"></line>
-    <line class="dgm-edge-hi" x1="318" y1="82"  x2="452" y2="88"  marker-end="url(#pk-arrow)"></line>
-    <line class="dgm-edge" x1="430" y1="138" x2="458" y2="106" marker-end="url(#pk-arrow)"></line>
-    <text class="dgm-t-sm" x="385" y="258" text-anchor="middle">routers — each forwards one hop closer</text>
+    <line class="fig-edge-hi" x1="320" y1="105" x2="392" y2="138" marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge" x1="320" y1="196" x2="392" y2="163" marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge-hi" x1="318" y1="82"  x2="452" y2="88"  marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge" x1="430" y1="138" x2="458" y2="106" marker-end="url(#pk-arrow)"></line>
+    <text class="fig-t-sm" x="385" y="258" text-anchor="middle">routers — each forwards one hop closer</text>
 
     <!-- reassembled at destination -->
-    <line class="dgm-edge" x1="492" y1="92"  x2="548" y2="130" marker-end="url(#pk-arrow)"></line>
-    <line class="dgm-edge" x1="432" y1="150" x2="548" y2="150" marker-end="url(#pk-arrow)"></line>
-    <rect class="dgm-box" x="556" y="112" width="92" height="76" rx="8"></rect>
-    <text class="dgm-t" x="602" y="145" text-anchor="middle">Home</text>
-    <text class="dgm-t" x="602" y="165" text-anchor="middle">page</text>
-    <text class="dgm-t-sm" x="602" y="205" text-anchor="middle">reassembled</text>
+    <line class="fig-edge" x1="492" y1="92"  x2="548" y2="130" marker-end="url(#pk-arrow)"></line>
+    <line class="fig-edge" x1="432" y1="150" x2="548" y2="150" marker-end="url(#pk-arrow)"></line>
+    <rect class="fig-box-you" x="556" y="112" width="92" height="76" rx="8"></rect>
+    <text class="fig-t" x="602" y="145" text-anchor="middle">Home</text>
+    <text class="fig-t" x="602" y="165" text-anchor="middle">page</text>
+    <text class="fig-t-sm" x="602" y="205" text-anchor="middle">reassembled</text>
   </svg>
-  <figcaption>One message is chopped into numbered packets. They take whatever routes through the router mesh are clear at that instant (two are highlighted), and the destination reassembles them in order. Lose one packet and only that small piece is re-sent.</figcaption>
+  <figcaption><strong>Orange</strong> = your content (the page); <strong>neutral</strong> = the packets it's sliced into; <strong>teal</strong> = the routers (network infrastructure). Packets take whatever routes are clear at that instant (two highlighted), and the destination reassembles them in order — lose one and only that small piece is re-sent.</figcaption>
 </figure>
 
 <div class="note">
@@ -254,45 +253,44 @@ ip -4 addr show</code></pre>
 
 <p>It's exactly like finding a person by "Country → City → Street → House." No single office holds every address; each level just points you one step closer. The clerk who does the asking-around on your behalf — walking from root to TLD to authoritative — is called a <strong>resolver</strong>, and it's usually run by your internet provider or a public one like <code>8.8.8.8</code>.</p>
 
-<figure class="diagram">
-  <svg viewBox="0 0 660 330" role="img" aria-labelledby="dgm-dns-title">
-    <title id="dgm-dns-title">The DNS hierarchy: the root refers to the .com TLD, which refers to the authoritative server, which holds the final IP address.</title>
+<figure class="fig">
+  <svg viewBox="0 0 660 330" role="img" aria-label="The DNS hierarchy as a tree: the root server refers down to the .com TLD server, which refers to example.com's authoritative server, which finally holds the IP address. The followed path is highlighted.">
 
     <!-- level labels down the left -->
-    <text class="dgm-t-sm" x="12" y="48"  text-anchor="start">root</text>
-    <text class="dgm-t-sm" x="12" y="130" text-anchor="start">TLD</text>
-    <text class="dgm-t-sm" x="12" y="212" text-anchor="start">authoritative</text>
-    <text class="dgm-t-sm" x="12" y="294" text-anchor="start">answer</text>
+    <text class="fig-t-sm" x="12" y="48"  text-anchor="start">root</text>
+    <text class="fig-t-sm" x="12" y="130" text-anchor="start">TLD</text>
+    <text class="fig-t-sm" x="12" y="212" text-anchor="start">authoritative</text>
+    <text class="fig-t-sm" x="12" y="294" text-anchor="start">answer</text>
 
     <!-- edges (drawn first so boxes sit on top); the followed path is highlighted -->
-    <line class="dgm-edge-hi" x1="330" y1="66"  x2="330" y2="104"></line>
-    <line class="dgm-edge"    x1="330" y1="66"  x2="470" y2="104"></line>
-    <line class="dgm-edge-hi" x1="330" y1="148" x2="330" y2="186"></line>
-    <line class="dgm-edge-hi" x1="330" y1="230" x2="330" y2="268"></line>
+    <line class="fig-edge-hi" x1="330" y1="66"  x2="330" y2="104"></line>
+    <line class="fig-edge"    x1="330" y1="66"  x2="470" y2="104"></line>
+    <line class="fig-edge-hi" x1="330" y1="148" x2="330" y2="186"></line>
+    <line class="fig-edge-hi" x1="330" y1="230" x2="330" y2="268"></line>
 
-    <!-- root -->
-    <rect class="dgm-box-violet" x="290" y="26" width="80" height="40" rx="8"></rect>
-    <text class="dgm-t" x="330" y="51" text-anchor="middle">.  (root)</text>
+    <!-- root (external system run by others) -->
+    <rect class="fig-box-ext" x="290" y="26" width="80" height="40" rx="8"></rect>
+    <text class="fig-t" x="330" y="51" text-anchor="middle">.  (root)</text>
 
-    <!-- TLDs -->
-    <rect class="dgm-box" x="286" y="106" width="88" height="42" rx="8"></rect>
-    <text class="dgm-t-mono" x="330" y="132" text-anchor="middle">.com</text>
-    <rect class="dgm-box-mut" x="430" y="106" width="88" height="42" rx="8"></rect>
-    <text class="dgm-t-mono" x="474" y="132" text-anchor="middle">.org</text>
+    <!-- TLDs: .com on our path (external), .org off-path (neutral/greyed) -->
+    <rect class="fig-box-ext" x="286" y="106" width="88" height="42" rx="8"></rect>
+    <text class="fig-mono" x="330" y="132" text-anchor="middle">.com</text>
+    <rect class="fig-box" x="430" y="106" width="88" height="42" rx="8"></rect>
+    <text class="fig-mono" x="474" y="132" text-anchor="middle">.org</text>
 
-    <!-- authoritative -->
-    <rect class="dgm-box-teal" x="238" y="188" width="184" height="42" rx="8"></rect>
-    <text class="dgm-t-mono" x="330" y="214" text-anchor="middle">example.com</text>
+    <!-- authoritative (external system run by others) -->
+    <rect class="fig-box-ext" x="238" y="188" width="184" height="42" rx="8"></rect>
+    <text class="fig-mono" x="330" y="214" text-anchor="middle">example.com</text>
 
-    <!-- final answer -->
-    <rect class="dgm-box" x="238" y="270" width="184" height="42" rx="8"></rect>
-    <text class="dgm-t-mono" x="330" y="296" text-anchor="middle">142.250.72.14</text>
+    <!-- final answer (data) -->
+    <rect class="fig-box" x="238" y="270" width="184" height="42" rx="8"></rect>
+    <text class="fig-mono" x="330" y="296" text-anchor="middle">142.250.72.14</text>
 
     <!-- name being resolved, top-right -->
-    <text class="dgm-t-hi" x="648" y="34" text-anchor="end">resolving:</text>
-    <text class="dgm-t-mono" x="648" y="56" text-anchor="end">www.linkboard.example.com</text>
+    <text class="fig-t-hi" x="648" y="34" text-anchor="end">resolving:</text>
+    <text class="fig-mono" x="648" y="56" text-anchor="end">www.linkboard.example.com</text>
   </svg>
-  <figcaption>Read the name right-to-left, biggest zone first. Each level knows only who to ask next — the root points at <code>.com</code>, <code>.com</code> points at <code>example.com</code>'s own server, and only that authoritative server holds the real IP. The highlighted path is the walk for our name.</figcaption>
+  <figcaption><strong>Violet</strong> = DNS servers, each run by someone else (root, the <code>.com</code> TLD, and <code>example.com</code>'s own server); <strong>neutral</strong> = the off-path <code>.org</code> branch and the final IP answer. Read the name right-to-left, biggest zone first — each level knows only who to ask next, and the highlighted path is the walk for our name.</figcaption>
 </figure>
 
 <h3>The bit that makes it fast: caching &amp; TTL</h3>
@@ -430,44 +428,43 @@ dig google.com</code></pre>
   <li><strong>ACK</strong> — your computer to the server: "Yes, I hear you. We're connected." ("ACK" = acknowledge.)</li>
 </ol>
 
-<figure class="diagram">
-  <svg viewBox="0 0 660 300" role="img" aria-labelledby="dgm-tcp-title">
-    <title id="dgm-tcp-title">The TCP three-way handshake: client sends SYN, server replies SYN-ACK, client sends ACK, then data flows.</title>
+<figure class="fig">
+  <svg viewBox="0 0 660 300" role="img" aria-label="A TCP three-way handshake sequence between your computer and a remote server: your computer sends SYN, the server replies SYN-ACK, your computer sends ACK, and only then can the real request flow.">
     <defs>
       <marker id="tcp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path class="dgm-arrow-hi" d="M0,0 L10,5 L0,10 z" fill="#e8590c"></path>
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
       </marker>
     </defs>
 
-    <!-- actors -->
-    <rect class="dgm-box-teal" x="46" y="20" width="150" height="40" rx="8"></rect>
-    <text class="dgm-t" x="121" y="45" text-anchor="middle">Your computer</text>
-    <rect class="dgm-box" x="464" y="20" width="150" height="40" rx="8"></rect>
-    <text class="dgm-t" x="539" y="45" text-anchor="middle">Server</text>
+    <!-- actors: you (orange) vs remote server (external violet) -->
+    <rect class="fig-box-you" x="46" y="20" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="121" y="45" text-anchor="middle">Your computer</text>
+    <rect class="fig-box-ext" x="464" y="20" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="539" y="45" text-anchor="middle">Server</text>
 
     <!-- lifelines -->
-    <line class="dgm-edge-dash" x1="121" y1="60" x2="121" y2="288"></line>
-    <line class="dgm-edge-dash" x1="539" y1="60" x2="539" y2="288"></line>
+    <line class="fig-edge-dash" x1="121" y1="60" x2="121" y2="288"></line>
+    <line class="fig-edge-dash" x1="539" y1="60" x2="539" y2="288"></line>
 
     <!-- SYN -->
-    <line class="dgm-edge-hi" x1="121" y1="96" x2="539" y2="120" marker-end="url(#tcp-arrow)"></line>
-    <text class="dgm-t-hi" x="150" y="90" text-anchor="start">SYN</text>
-    <text class="dgm-t-sm" x="150" y="108" text-anchor="start">“can you hear me?”</text>
+    <line class="fig-edge-hi" x1="121" y1="96" x2="539" y2="120" marker-end="url(#tcp-arrow)"></line>
+    <text class="fig-t-hi" x="150" y="90" text-anchor="start">SYN</text>
+    <text class="fig-t-sm" x="150" y="108" text-anchor="start">“can you hear me?”</text>
 
     <!-- SYN-ACK -->
-    <line class="dgm-edge-hi" x1="539" y1="152" x2="121" y2="176" marker-end="url(#tcp-arrow)"></line>
-    <text class="dgm-t-hi" x="510" y="146" text-anchor="end">SYN-ACK</text>
-    <text class="dgm-t-sm" x="510" y="164" text-anchor="end">“yes — and can you hear me?”</text>
+    <line class="fig-edge-hi" x1="539" y1="152" x2="121" y2="176" marker-end="url(#tcp-arrow)"></line>
+    <text class="fig-t-hi" x="510" y="146" text-anchor="end">SYN-ACK</text>
+    <text class="fig-t-sm" x="510" y="164" text-anchor="end">“yes — and can you hear me?”</text>
 
     <!-- ACK -->
-    <line class="dgm-edge-hi" x1="121" y1="208" x2="539" y2="232" marker-end="url(#tcp-arrow)"></line>
-    <text class="dgm-t-hi" x="150" y="202" text-anchor="start">ACK</text>
-    <text class="dgm-t-sm" x="150" y="220" text-anchor="start">“yes — we’re connected”</text>
+    <line class="fig-edge-hi" x1="121" y1="208" x2="539" y2="232" marker-end="url(#tcp-arrow)"></line>
+    <text class="fig-t-hi" x="150" y="202" text-anchor="start">ACK</text>
+    <text class="fig-t-sm" x="150" y="220" text-anchor="start">“yes — we’re connected”</text>
 
     <!-- data flows -->
-    <text class="dgm-t" x="330" y="278" text-anchor="middle">now the real request (GET / HTTP/1.1) can flow</text>
+    <text class="fig-t" x="330" y="278" text-anchor="middle">now the real request (GET / HTTP/1.1) can flow</text>
   </svg>
-  <figcaption>Three messages open the connection before a single byte of your request is sent. That's one full round-trip spent just saying hello — the unavoidable latency cost you'll learn to spend sparingly.</figcaption>
+  <figcaption><strong>Orange</strong> = your computer (the side you own); <strong>violet</strong> = the remote server run by someone else. Three messages open the connection before a single byte of your request is sent — one full round-trip spent just saying hello, the unavoidable latency cost you'll learn to spend sparingly.</figcaption>
 </figure>
 
 <p>Three messages, and now a reliable, ordered connection exists in both directions. Only <em>then</em> does your browser send the actual <code>GET / HTTP/1.1</code> request. This is also why a network round-trip has a real cost you can't avoid: even before asking for anything, you've spent one full round-trip just saying hello. Remember Phase 1's staircase — a network hop is "months" on the human scale — and now you know part of why: TCP politely shakes hands first.</p>
@@ -487,35 +484,34 @@ dig google.com</code></pre>
 
 <p><strong>Latency</strong> is how <em>long</em> the pipe is — how many milliseconds it takes for one bit to travel from one end to the other and (usually) for a reply to come back (a "round-trip"). Latency is set mostly by physical distance and the number of router hops. This is what matters for <em>small, frequent, back-and-forth</em> exchanges: a game input, a keystroke in a remote terminal, or — critically for us — each little request to a database.</p>
 
-<figure class="diagram">
-  <svg viewBox="0 0 660 250" role="img" aria-labelledby="dgm-pipe-title">
-    <title id="dgm-pipe-title">A pipe: its width is bandwidth (data per second), its length is latency (time to cross).</title>
+<figure class="fig">
+  <svg viewBox="0 0 660 250" role="img" aria-label="A network pipe: its width represents bandwidth (data carried per second) and its length represents latency (the time for one bit to cross, set by distance).">
     <defs>
       <marker id="pipe-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-        <path class="dgm-arrow" d="M0,0 L10,5 L0,10 z" fill="#aeb6c2"></path>
+        <path class="fig-arrow" d="M0,0 L10,5 L0,10 z"></path>
       </marker>
     </defs>
 
-    <!-- the pipe -->
-    <rect class="dgm-box-teal" x="120" y="86" width="420" height="78" rx="6"></rect>
-    <!-- packets travelling through -->
-    <rect class="dgm-box" x="150" y="112" width="26" height="26" rx="5"></rect>
-    <rect class="dgm-box" x="300" y="112" width="26" height="26" rx="5"></rect>
-    <rect class="dgm-box" x="450" y="112" width="26" height="26" rx="5"></rect>
+    <!-- the pipe (network infrastructure) -->
+    <rect class="fig-box-infra" x="120" y="86" width="420" height="78" rx="6"></rect>
+    <!-- packets travelling through (generic data) -->
+    <rect class="fig-box" x="150" y="112" width="26" height="26" rx="5"></rect>
+    <rect class="fig-box" x="300" y="112" width="26" height="26" rx="5"></rect>
+    <rect class="fig-box" x="450" y="112" width="26" height="26" rx="5"></rect>
 
     <!-- bandwidth = width (vertical measure on the left) -->
-    <line class="dgm-edge" x1="92" y1="86" x2="92" y2="164" marker-start="url(#pipe-arrow)" marker-end="url(#pipe-arrow)"></line>
-    <text class="dgm-t" x="82" y="120" text-anchor="end">band-</text>
-    <text class="dgm-t" x="82" y="140" text-anchor="end">width</text>
-    <text class="dgm-t-sm" x="82" y="60" text-anchor="end">width of the pipe</text>
-    <text class="dgm-t-sm" x="82" y="188" text-anchor="end">= data per second</text>
+    <line class="fig-edge" x1="92" y1="86" x2="92" y2="164" marker-start="url(#pipe-arrow)" marker-end="url(#pipe-arrow)"></line>
+    <text class="fig-t" x="82" y="120" text-anchor="end">band-</text>
+    <text class="fig-t" x="82" y="140" text-anchor="end">width</text>
+    <text class="fig-t-sm" x="82" y="60" text-anchor="end">width of the pipe</text>
+    <text class="fig-t-sm" x="82" y="188" text-anchor="end">= data per second</text>
 
     <!-- latency = length (horizontal measure below) -->
-    <line class="dgm-edge" x1="120" y1="196" x2="540" y2="196" marker-start="url(#pipe-arrow)" marker-end="url(#pipe-arrow)"></line>
-    <text class="dgm-t" x="330" y="224" text-anchor="middle">latency</text>
-    <text class="dgm-t-sm" x="330" y="242" text-anchor="middle">length of the pipe = time for one bit to cross (set by distance)</text>
+    <line class="fig-edge" x1="120" y1="196" x2="540" y2="196" marker-start="url(#pipe-arrow)" marker-end="url(#pipe-arrow)"></line>
+    <text class="fig-t" x="330" y="224" text-anchor="middle">latency</text>
+    <text class="fig-t-sm" x="330" y="242" text-anchor="middle">length of the pipe = time for one bit to cross (set by distance)</text>
   </svg>
-  <figcaption>Widening the pipe (more bandwidth) moves big transfers faster but does nothing for a bit that simply has far to travel. You can buy bandwidth; you can't buy your way past distance — which is why servers are placed close to users.</figcaption>
+  <figcaption><strong>Teal</strong> = the network pipe (infrastructure); <strong>neutral</strong> = the data flowing through it. Widening the pipe (more bandwidth) moves big transfers faster but does nothing for a bit that simply has far to travel — you can buy bandwidth, but not your way past distance, which is why servers are placed close to users.</figcaption>
 </figure>
 
 <div class="note">
@@ -566,30 +562,29 @@ ping -c 5 example.com</code></pre>
 
 <p>When LinkBoard sends a page, the data goes <em>down</em> the stack on the sender's side (HTTP wraps it, TCP wraps that, IP wraps that, WiFi sends the bits) and <em>up</em> the stack on the receiver's side (WiFi receives bits, IP unwraps to find the machine, TCP reassembles in order, HTTP hands the page to the browser). Each layer on the receiving end reads only the envelope its counterpart wrote. It's envelopes inside envelopes inside envelopes — the technical name for this wrapping is <strong>encapsulation</strong>.</p>
 
-<figure class="diagram">
-  <svg viewBox="0 0 660 300" role="img" aria-labelledby="dgm-encap-title">
-    <title id="dgm-encap-title">Encapsulation: HTTP data is wrapped in a TCP segment, wrapped in an IP packet, wrapped in a link-layer frame.</title>
+<figure class="fig">
+  <svg viewBox="0 0 660 300" role="img" aria-label="Encapsulation shown as nested envelopes: your HTTP request sits at the center, wrapped by a TCP segment, then an IP packet, then a physical link frame.">
 
-    <!-- outer: link/frame -->
-    <rect class="dgm-box-mut" x="20" y="30" width="620" height="240" rx="12"></rect>
-    <text class="dgm-t" x="40" y="56" text-anchor="start">Link frame</text>
-    <text class="dgm-t-sm" x="620" y="56" text-anchor="end">WiFi / Ethernet — one physical hop</text>
+    <!-- outer: link/frame (generic physical medium) -->
+    <rect class="fig-box" x="20" y="30" width="620" height="240" rx="12"></rect>
+    <text class="fig-t" x="40" y="56" text-anchor="start">Link frame</text>
+    <text class="fig-t-sm" x="620" y="56" text-anchor="end">WiFi / Ethernet — one physical hop</text>
 
-    <!-- IP -->
-    <rect class="dgm-box-violet" x="70" y="72" width="520" height="180" rx="10"></rect>
-    <text class="dgm-t" x="90" y="98" text-anchor="start">IP packet</text>
-    <text class="dgm-t-sm" x="570" y="98" text-anchor="end">from / to IP address — routing</text>
+    <!-- IP (network infrastructure) -->
+    <rect class="fig-box-infra" x="70" y="72" width="520" height="180" rx="10"></rect>
+    <text class="fig-t" x="90" y="98" text-anchor="start">IP packet</text>
+    <text class="fig-t-sm" x="570" y="98" text-anchor="end">from / to IP address — routing</text>
 
-    <!-- TCP -->
-    <rect class="dgm-box-teal" x="120" y="114" width="420" height="96" rx="10"></rect>
-    <text class="dgm-t" x="140" y="140" text-anchor="start">TCP segment</text>
-    <text class="dgm-t-sm" x="520" y="140" text-anchor="end">port + sequence — reliable, ordered</text>
+    <!-- TCP (transport infrastructure) -->
+    <rect class="fig-box-infra" x="120" y="114" width="420" height="96" rx="10"></rect>
+    <text class="fig-t" x="140" y="140" text-anchor="start">TCP segment</text>
+    <text class="fig-t-sm" x="520" y="140" text-anchor="end">port + sequence — reliable, ordered</text>
 
-    <!-- HTTP payload -->
-    <rect class="dgm-box" x="170" y="156" width="320" height="40" rx="8"></rect>
-    <text class="dgm-t-mono" x="330" y="181" text-anchor="middle">GET / HTTP/1.1</text>
+    <!-- HTTP payload (what you wrote / own) -->
+    <rect class="fig-box-you" x="170" y="156" width="320" height="40" rx="8"></rect>
+    <text class="fig-mono" x="330" y="181" text-anchor="middle">GET / HTTP/1.1</text>
   </svg>
-  <figcaption>Each layer wraps the one above in its own envelope and reads only its own. Swap WiFi for Ethernet, or IPv4 for IPv6, and the <code>GET / HTTP/1.1</code> at the center never notices — that independence is the whole payoff of layering.</figcaption>
+  <figcaption><strong>Orange</strong> = your request at the center (the part you write); <strong>teal</strong> = the transport &amp; network layers (infrastructure); <strong>neutral</strong> = the outer physical frame. Each layer wraps the one above and reads only its own envelope — swap WiFi for Ethernet, or IPv4 for IPv6, and the <code>GET / HTTP/1.1</code> at the center never notices. That independence is the whole payoff of layering.</figcaption>
 </figure>
 
 <div class="chip">CS fundamental: layering / separation of concerns. Each layer solves one problem and hides its mess from the others, so any layer can be swapped without rewriting the rest. You'll see this same principle in software architecture (Phase 22), not just networks.</div>

@@ -141,15 +141,64 @@
 
 <p>Every file on the computer lives inside a folder; folders live inside other folders. If you drew that, you'd get a tree shape — one trunk, many branches. On Linux the trunk (the topmost folder) is written as a single slash: <code>/</code>, called the <strong>root</strong>. Everything on the machine lives somewhere under it:</p>
 
-<pre><code>/                        <span class="c">← the root: the top of everything</span>
-├── home/
-│   └── aiman/           <span class="c">← your personal folder, called your "home"</span>
-├── etc/                 <span class="c">← system configuration files live here</span>
-├── var/
-│   └── log/             <span class="c">← programs write their diaries ("logs") here</span>
-├── tmp/                 <span class="c">← scratch space; the OS wipes it on reboot</span>
-└── mnt/
-    └── d/               <span class="c">← in WSL: your Windows D:\ drive appears here!</span></code></pre>
+<figure class="fig">
+  <svg viewBox="0 0 660 330" role="img" aria-label="The Linux file system as a tree rooted at slash, with system folders etc, var (containing log), tmp, and mnt (containing d) branching off, and your home folder home/aiman highlighted as yours.">
+    <!-- connectors: main spine + elbows -->
+    <line class="fig-edge" x1="58" y1="39" x2="58" y2="257"></line>
+    <line class="fig-edge" x1="58" y1="59"  x2="94" y2="59"></line>
+    <line class="fig-edge" x1="58" y1="125" x2="94" y2="125"></line>
+    <line class="fig-edge" x1="58" y1="158" x2="94" y2="158"></line>
+    <line class="fig-edge" x1="58" y1="224" x2="94" y2="224"></line>
+    <line class="fig-edge" x1="58" y1="257" x2="94" y2="257"></line>
+    <!-- sub-spines to depth-2 children -->
+    <line class="fig-edge" x1="130" y1="72"  x2="130" y2="92"></line>
+    <line class="fig-edge" x1="130" y1="92"  x2="166" y2="92"></line>
+    <line class="fig-edge" x1="130" y1="171" x2="130" y2="191"></line>
+    <line class="fig-edge" x1="130" y1="191" x2="166" y2="191"></line>
+    <line class="fig-edge" x1="130" y1="270" x2="130" y2="290"></line>
+    <line class="fig-edge" x1="130" y1="290" x2="166" y2="290"></line>
+
+    <!-- root -->
+    <rect class="fig-box" x="34" y="13" width="52" height="26" rx="6"></rect>
+    <text class="fig-mono" x="60" y="31" text-anchor="middle">/</text>
+    <text class="fig-t-sm" x="300" y="30" text-anchor="start">the root — the top of everything</text>
+
+    <!-- home/ (depth 1) -->
+    <rect class="fig-box" x="94" y="46" width="72" height="26" rx="6"></rect>
+    <text class="fig-mono" x="130" y="64" text-anchor="middle">home/</text>
+    <!-- aiman/ (depth 2, YOURS) -->
+    <rect class="fig-box-you" x="166" y="79" width="96" height="26" rx="6"></rect>
+    <text class="fig-mono" x="214" y="97" text-anchor="middle">aiman/</text>
+    <text class="fig-t-sm" x="300" y="97" text-anchor="start">your personal folder (your “home”)</text>
+
+    <!-- etc/ -->
+    <rect class="fig-box" x="94" y="112" width="72" height="26" rx="6"></rect>
+    <text class="fig-mono" x="130" y="130" text-anchor="middle">etc/</text>
+    <text class="fig-t-sm" x="300" y="130" text-anchor="start">system configuration files</text>
+
+    <!-- var/ -->
+    <rect class="fig-box" x="94" y="145" width="72" height="26" rx="6"></rect>
+    <text class="fig-mono" x="130" y="163" text-anchor="middle">var/</text>
+    <!-- log/ -->
+    <rect class="fig-box" x="166" y="178" width="80" height="26" rx="6"></rect>
+    <text class="fig-mono" x="206" y="196" text-anchor="middle">log/</text>
+    <text class="fig-t-sm" x="300" y="196" text-anchor="start">programs write their diaries (“logs”) here</text>
+
+    <!-- tmp/ -->
+    <rect class="fig-box" x="94" y="211" width="72" height="26" rx="6"></rect>
+    <text class="fig-mono" x="130" y="229" text-anchor="middle">tmp/</text>
+    <text class="fig-t-sm" x="300" y="229" text-anchor="start">scratch space; wiped on reboot</text>
+
+    <!-- mnt/ -->
+    <rect class="fig-box" x="94" y="244" width="72" height="26" rx="6"></rect>
+    <text class="fig-mono" x="130" y="262" text-anchor="middle">mnt/</text>
+    <!-- d/ (YOURS — Windows drive) -->
+    <rect class="fig-box-you" x="166" y="277" width="64" height="26" rx="6"></rect>
+    <text class="fig-mono" x="198" y="295" text-anchor="middle">d/</text>
+    <text class="fig-t-sm" x="300" y="295" text-anchor="start">in WSL: your Windows D:\ drive appears here!</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the parts that are yours (your home folder <code>/home/aiman</code>, and your Windows <code>D:\</code> drive mounted at <code>/mnt/d</code>); <strong>neutral</strong> = system folders. Everything hangs off a single root, <code>/</code>. The <code>~</code> in your prompt is just a shortcut for your home folder.</figcaption>
+</figure>
 
 <p>The <code>~</code> you saw in the prompt is simply a shortcut meaning "my home folder" (<code>/home/aiman</code>).</p>
 
@@ -750,10 +799,44 @@ echo $?        <span class="c"># prints 2 — ls failed, and said so via its exi
 
 <p>Between "I edited a file" and "it's saved in history forever" Git inserts one deliberate step. There are three places your work can be:</p>
 
-<pre><code>   WORKING DIRECTORY        →  git add  →     STAGING AREA        →  git commit  →     REPOSITORY
-  (your actual files,                     (the list of exactly                      (the permanent album
-   which you edit freely)                  what the NEXT photo                       of snapshots, inside
-                                           will include)                             the .git/ folder)</code></pre>
+<figure class="fig">
+  <svg viewBox="0 0 660 170" role="img" aria-label="The three Git areas as a left-to-right pipeline: your working directory, then git add moves changes into the staging area, then git commit records them into the repository.">
+    <defs>
+      <marker id="git-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+
+    <!-- working directory (your files) -->
+    <rect class="fig-box-you" x="18" y="40" width="150" height="60" rx="10"></rect>
+    <text class="fig-t" x="93" y="66" text-anchor="middle">WORKING</text>
+    <text class="fig-t" x="93" y="86" text-anchor="middle">DIRECTORY</text>
+    <text class="fig-t-sm" x="93" y="124" text-anchor="middle">your actual files,</text>
+    <text class="fig-t-sm" x="93" y="140" text-anchor="middle">edited freely</text>
+
+    <!-- git add -->
+    <text class="fig-mono" x="211" y="62" text-anchor="middle">git add</text>
+    <line class="fig-edge-hi" x1="172" y1="70" x2="251" y2="70" marker-end="url(#git-arrow)"></line>
+
+    <!-- staging area -->
+    <rect class="fig-box" x="255" y="40" width="150" height="60" rx="10"></rect>
+    <text class="fig-t" x="330" y="66" text-anchor="middle">STAGING</text>
+    <text class="fig-t" x="330" y="86" text-anchor="middle">AREA</text>
+    <text class="fig-t-sm" x="330" y="124" text-anchor="middle">exactly what the</text>
+    <text class="fig-t-sm" x="330" y="140" text-anchor="middle">next commit includes</text>
+
+    <!-- git commit -->
+    <text class="fig-mono" x="448" y="62" text-anchor="middle">git commit</text>
+    <line class="fig-edge-hi" x1="409" y1="70" x2="488" y2="70" marker-end="url(#git-arrow)"></line>
+
+    <!-- repository -->
+    <rect class="fig-box" x="492" y="40" width="150" height="60" rx="10"></rect>
+    <text class="fig-t" x="567" y="76" text-anchor="middle">REPOSITORY</text>
+    <text class="fig-t-sm" x="567" y="124" text-anchor="middle">permanent album of</text>
+    <text class="fig-t-sm" x="567" y="140" text-anchor="middle">snapshots (.git/)</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = your working directory (the files you own and edit); <strong>neutral</strong> = the staging area and repository that Git maintains. <code>git add</code> puts chosen changes on the "photo table"; <code>git commit</code> clicks the shutter, making them a permanent snapshot.</figcaption>
+</figure>
 
 <p><strong>Analogy, continuing the photographer:</strong> the working directory is your messy desk — work in progress, half-finished thoughts, everything. <code>git add</code> is you placing chosen items onto the photo table: "these are going in the next shot." The staging area <em>is</em> that photo table. <code>git commit</code> clicks the shutter: whatever was on the table becomes a permanent photo in the album, labeled with your message.</p>
 
@@ -780,7 +863,33 @@ git log --oneline               <span class="c"># flip through the album, one li
 
 <p>That last field — the parent — is what turns isolated snapshots into <em>history</em>. Each commit points back at the commit that came before it, so the album is a chain:</p>
 
-<pre><code>[first commit] ← [second commit] ← [third commit] ← [fourth commit]</code></pre>
+<figure class="fig">
+  <svg viewBox="0 0 660 130" role="img" aria-label="Four commits in a row; each commit after the first points a parent arrow back to the commit before it, so history is a chain read newest-to-oldest by following parent pointers.">
+    <defs>
+      <marker id="commit-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+
+    <!-- commits -->
+    <rect class="fig-box" x="20"  y="40" width="120" height="48" rx="10"></rect>
+    <text class="fig-t-sm" x="80"  y="69" text-anchor="middle">first commit</text>
+    <rect class="fig-box" x="200" y="40" width="120" height="48" rx="10"></rect>
+    <text class="fig-t-sm" x="260" y="69" text-anchor="middle">second commit</text>
+    <rect class="fig-box" x="380" y="40" width="120" height="48" rx="10"></rect>
+    <text class="fig-t-sm" x="440" y="69" text-anchor="middle">third commit</text>
+    <rect class="fig-box" x="540" y="40" width="112" height="48" rx="10"></rect>
+    <text class="fig-t-sm" x="596" y="69" text-anchor="middle">fourth commit</text>
+
+    <!-- parent pointers: each newer commit points back to its parent -->
+    <line class="fig-edge-hi" x1="200" y1="64" x2="140" y2="64" marker-end="url(#commit-arrow)"></line>
+    <line class="fig-edge-hi" x1="380" y1="64" x2="320" y2="64" marker-end="url(#commit-arrow)"></line>
+    <line class="fig-edge-hi" x1="540" y1="64" x2="500" y2="64" marker-end="url(#commit-arrow)"></line>
+
+    <text class="fig-t-hi" x="330" y="26" text-anchor="middle">each arrow means “my parent is…”</text>
+  </svg>
+  <figcaption>Each commit stores the fingerprint of the one before it — its <strong>parent</strong> (the orange arrows). To read history, Git starts at the newest commit and follows parent pointers backwards. This backward chain is what makes history tamper-evident.</figcaption>
+</figure>
 
 <p>Each arrow means "my parent is." To read history, Git starts at the newest commit and follows parent pointers backwards. (When branches enter the picture, the chain can fork into diverging paths and later rejoin — you'll see that shape in section 10.6.)</p>
 
