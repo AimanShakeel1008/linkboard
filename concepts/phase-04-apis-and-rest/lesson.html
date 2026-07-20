@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 04 — LinkBoard v1: APIs &amp; REST</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="page">
+
+<aside class="toc">
+  <div class="toc-inner">
+    <p class="toc-phase">Phase 04</p>
+    <nav>
+      <a href="#why">Why this phase exists</a>
+      <a href="#pa">A. What is an API?</a>
+      <a href="#pb">B. Why frameworks exist</a>
+      <a href="#pc">C. REST: resources &amp; verbs</a>
+      <a href="#pd">D. JSON &amp; serialization</a>
+      <a href="#pe">E. Data structures in context</a>
+      <a href="#pf">F. Webhooks</a>
+      <a href="#pg">G. The race that eats a vote</a>
+      <a href="#code">The code we wrote</a>
+      <a href="#run">Run it &amp; watch the logs</a>
+      <a href="#break">Break it / observe it</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#challenges">Challenges &amp; Questions</a>
+    </nav>
+    <div class="toc-bottom">
+      <a class="nav-card" href="../phase-03-http-deep-dive/lesson.html">
+        <span class="nav-label">← Prev · Phase 03</span>
+        <span class="nav-title">HTTP Deep Dive</span>
+      </a>
+      <a class="nav-map" href="../index.html">↑ Course map</a>
+    </div>
+  </div>
+</aside>
+
+<main>
+
+<header class="lesson">
+  <p class="kicker">LinkBoard · Part II — Building LinkBoard</p>
+  <h1>Phase 04 — LinkBoard v1: APIs &amp; REST</h1>
+  <p class="covers"><strong>Covers:</strong> M9 (APIs, REST, JSON, serialization formats, webhooks) plus data-structure fundamentals in context (hash maps, arrays vs linked lists, big-O). <strong>You need:</strong> everything from <a href="../phase-03-http-deep-dive/lesson.html">Phase 3</a>, and this phase installs two Python packages (<code>fastapi</code>, <code>uvicorn</code>) into a virtual environment. <strong>Where the code lives:</strong> LinkBoard becomes a real app — <code>project/app.py</code> (FastAPI), <code>project/storage.py</code> (JSON-file storage), and <code>project/race_demo.py</code> (the vote-eating race).</p>
+</header>
+
+<h2 id="why">Why this phase exists</h2>
+
+<p>For three phases we built everything by hand. We opened <a href="../phase-02-internet-and-protocols/lesson.html">raw sockets</a>, parsed <a href="../phase-03-http-deep-dive/lesson.html">HTTP requests</a> character by character, assembled responses byte by byte, and routed with a giant chain of <code>if</code>/<code>elif</code>. That was the whole point — to prove, with our own hands, that the web is not magic. Now we cash in that understanding.</p>
+
+<p>This phase does two big things at once. First, we stop hand-writing the plumbing and adopt a real <strong>web framework</strong> (FastAPI), because now that we <em>know</em> exactly what routing, parsing, and serialization are, letting a tool do them is a superpower, not a mystery. Second, we redesign LinkBoard as a proper <strong>API</strong> — a clean, predictable interface that other programs (and, in Phase 5, our own web frontend) can talk to. By the end, LinkBoard v1 will let you submit links, list them, upvote, and comment — all as real HTTP calls returning JSON.</p>
+
+<p>And then, right at the moment it feels like a real app, we break it on purpose. Two people upvote the same link at the same instant — and one of the votes <em>vanishes</em>. That disappearing vote is not a bug in our logic; it's the fundamental limit of storing data in a plain file, and feeling it here is what will make Phase 6's database — and the word "transaction" — feel inevitable rather than academic.</p>
+
+<p>Here's the path:</p>
+
+<ol>
+  <li><strong>Part A</strong> — What an API actually is (ordering from a menu, not walking into the kitchen).</li>
+  <li><strong>Part B</strong> — Why frameworks exist: everything we hand-wrote, now automatic.</li>
+  <li><strong>Part C</strong> — REST: designing an API around resources (nouns) and methods (verbs).</li>
+  <li><strong>Part D</strong> — JSON and serialization; and how JSON compares to XML and Protobuf.</li>
+  <li><strong>Part E</strong> — The data structures underneath it all: hash maps, arrays vs linked lists, and big-O.</li>
+  <li><strong>Part F</strong> — Webhooks: "don't call us, we'll call you."</li>
+  <li><strong>Part G</strong> — The race condition: two upvotes, one lost.</li>
+</ol>
+
+<h2 id="pa">Part A — What is an API? Ordering from a menu</h2>
+
+<p>The term <strong>API</strong> (Application Programming Interface) sounds forbidding, but the idea is something you use every day without thinking. When you sit down at a restaurant, you don't walk into the kitchen, find the chef, and explain how to sear a steak. You read a <strong>menu</strong>, say "the number 4, please," and a while later the dish arrives. The menu is a small, stable, public list of things you're allowed to ask for. The kitchen — the pots, the recipes, the chaos — stays hidden behind it.</p>
+
+<p>An API is exactly that: a menu one program offers to other programs. It's a defined set of requests you're allowed to make ("list the links," "submit this link," "upvote link 3") and the responses you'll get back — with all the messy internals (files, databases, algorithms) hidden behind it. You order by name; you don't need to know how the kitchen works, and the kitchen is free to change how it cooks as long as the menu stays the same.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 260" role="img" aria-label="An API as a boundary: a client on the left makes named requests through a stable API menu in the middle, and the messy internals (storage, logic) stay hidden on the right behind that boundary.">
+    <defs>
+      <marker id="api-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="24" y="96" width="150" height="60" rx="8"></rect>
+    <text class="fig-t" x="99" y="122" text-anchor="middle">Client</text>
+    <text class="fig-t-sm" x="99" y="142" text-anchor="middle">frontend / another app</text>
+
+    <!-- the API boundary (menu) -->
+    <rect class="fig-box-infra" x="266" y="40" width="128" height="176" rx="10"></rect>
+    <text class="fig-t" x="330" y="66" text-anchor="middle">API</text>
+    <text class="fig-t-sm" x="330" y="92" text-anchor="middle">the menu</text>
+    <text class="fig-mono" x="330" y="120" text-anchor="middle">GET /links</text>
+    <text class="fig-mono" x="330" y="142" text-anchor="middle">POST /links</text>
+    <text class="fig-mono" x="330" y="164" text-anchor="middle">/upvote</text>
+    <text class="fig-mono" x="330" y="186" text-anchor="middle">/comments</text>
+
+    <!-- hidden kitchen -->
+    <rect class="fig-box" x="486" y="60" width="150" height="140" rx="8"></rect>
+    <text class="fig-t" x="561" y="110" text-anchor="middle">The kitchen</text>
+    <text class="fig-t-sm" x="561" y="132" text-anchor="middle">storage, logic,</text>
+    <text class="fig-t-sm" x="561" y="150" text-anchor="middle">files, database…</text>
+    <text class="fig-t-sm" x="561" y="176" text-anchor="middle">(hidden)</text>
+
+    <line class="fig-edge-hi" x1="174" y1="118" x2="264" y2="118" marker-end="url(#api-arrow)"></line>
+    <text class="fig-t-sm" x="219" y="108" text-anchor="middle">order by name</text>
+    <line class="fig-edge-hi" x1="264" y1="140" x2="174" y2="140" marker-end="url(#api-arrow)"></line>
+    <text class="fig-t-sm" x="219" y="164" text-anchor="middle">dish arrives (JSON)</text>
+
+    <line class="fig-edge-dash" x1="394" y1="128" x2="484" y2="128"></line>
+  </svg>
+  <figcaption><strong>Orange</strong> = the client (your side, doing the ordering); <strong>teal</strong> = the API boundary — the stable public menu; <strong>neutral</strong> = the hidden internals. The client only ever names things on the menu; the kitchen behind the dashed line can change completely (a file today, a database in Phase 6) without the client noticing. That hiding is the entire value of an API.</figcaption>
+</figure>
+
+<p>LinkBoard's API is a <strong>web API</strong> specifically: the "menu items" are HTTP requests, and the "dishes" are JSON responses. Everything you learned in Phase 3 — methods, paths, status codes, headers — is the vocabulary this menu is written in. An API is just a disciplined, well-labelled way of using HTTP.</p>
+
+<div class="realworld">
+  <p>APIs are what let software be built out of software. Your weather app doesn't measure the weather — it calls a weather <em>API</em>. A checkout page doesn't handle your card — it calls Stripe's <em>API</em>. Sign in "with Google" is Google's <em>API</em>. Entire companies exist purely as an API with no user-facing app at all (Twilio for text messages, Stripe for payments). "Design the API" is often the first real task in a system-design interview, because the API <em>is</em> the contract everything else is built around — get it right and the rest has a shape; get it wrong and every client suffers. You're about to design one for LinkBoard.</p>
+</div>
+
+<h2 id="pb">Part B — Why frameworks exist: the plumbing, now automatic</h2>
+
+<p>Let's be honest about what our hand-written server cost us. To add a single new route in Phase 3, we had to: add a branch to the <code>if</code>/<code>elif</code> tree, manually read the body bytes, hand-parse whatever format they were in, check every field ourselves, build a <code>Response</code> object, and format it to bytes. Every route repeated most of that. It was educational — and it was a lot of fiddly, repetitive, bug-prone work.</p>
+
+<p>A <strong>web framework</strong> is a library that does all that repetitive plumbing for you, so you write only the part that's actually unique to <em>your</em> app. We're using <strong>FastAPI</strong>, a modern Python framework. Here is precisely what it takes off our hands — and you'll recognise every item, because we built each one by hand:</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 680 220" role="img" aria-label="A request flows left to right through framework stages the framework handles automatically — routing, parsing, validation — into your small handler function, then back out through automatic serialization to a response.">
+    <defs>
+      <marker id="fw-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box" x="16" y="90" width="70" height="44" rx="6"></rect>
+    <text class="fig-t-sm" x="51" y="116" text-anchor="middle">request</text>
+
+    <rect class="fig-box-infra" x="104" y="80" width="86" height="64" rx="8"></rect>
+    <text class="fig-t-sm" x="147" y="106" text-anchor="middle">route</text>
+    <text class="fig-t-sm" x="147" y="124" text-anchor="middle">match</text>
+
+    <rect class="fig-box-infra" x="200" y="80" width="86" height="64" rx="8"></rect>
+    <text class="fig-t-sm" x="243" y="106" text-anchor="middle">parse</text>
+    <text class="fig-t-sm" x="243" y="124" text-anchor="middle">body JSON</text>
+
+    <rect class="fig-box-infra" x="296" y="80" width="86" height="64" rx="8"></rect>
+    <text class="fig-t-sm" x="339" y="106" text-anchor="middle">validate</text>
+    <text class="fig-t-sm" x="339" y="124" text-anchor="middle">fields</text>
+
+    <!-- your code -->
+    <rect class="fig-box-you" x="392" y="80" width="110" height="64" rx="8"></rect>
+    <text class="fig-t" x="447" y="106" text-anchor="middle">your</text>
+    <text class="fig-t" x="447" y="126" text-anchor="middle">handler</text>
+
+    <rect class="fig-box-infra" x="512" y="80" width="86" height="64" rx="8"></rect>
+    <text class="fig-t-sm" x="555" y="106" text-anchor="middle">serialize</text>
+    <text class="fig-t-sm" x="555" y="124" text-anchor="middle">to JSON</text>
+
+    <rect class="fig-box" x="612" y="90" width="56" height="44" rx="6"></rect>
+    <text class="fig-t-sm" x="640" y="116" text-anchor="middle">resp</text>
+
+    <line class="fig-edge" x1="86" y1="112" x2="102" y2="112" marker-end="url(#fw-arrow)"></line>
+    <line class="fig-edge" x1="190" y1="112" x2="198" y2="112" marker-end="url(#fw-arrow)"></line>
+    <line class="fig-edge" x1="286" y1="112" x2="294" y2="112" marker-end="url(#fw-arrow)"></line>
+    <line class="fig-edge-hi" x1="382" y1="112" x2="390" y2="112" marker-end="url(#fw-arrow)"></line>
+    <line class="fig-edge-hi" x1="502" y1="112" x2="510" y2="112" marker-end="url(#fw-arrow)"></line>
+    <line class="fig-edge" x1="598" y1="112" x2="610" y2="112" marker-end="url(#fw-arrow)"></line>
+
+    <text class="fig-t-sm" x="243" y="176" text-anchor="middle">— the framework does all of this —</text>
+    <text class="fig-t-hi" x="447" y="176" text-anchor="middle">you write only this</text>
+  </svg>
+  <figcaption><strong>Teal</strong> = the stages the framework handles for free (routing, parsing, validation, serialization — everything we hand-wrote in Phases 2–3); <strong>orange</strong> = the only part you write, the handler that decides what to actually <em>do</em>. The framework shrinks a route from dozens of fiddly lines to a few lines of real logic.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>Routing</strong> — instead of an <code>if</code>/<code>elif</code> tree, you tag a function with <code>@app.get("/links")</code> and the framework calls it when that method+path arrives.</li>
+  <li><strong>Parsing</strong> — the framework reads the request body and turns the JSON into a Python object; you never touch raw bytes.</li>
+  <li><strong>Validation</strong> — you declare the shape you expect ("a title string and a url string"); a request missing a field is auto-rejected with a clear error <em>before your code runs</em>.</li>
+  <li><strong>Serialization</strong> — you <code>return</code> a plain Python dictionary; the framework turns it into a JSON response with the right headers.</li>
+  <li><strong>Free extras</strong> — FastAPI even generates an interactive documentation page at <code>/docs</code> from your code, so anyone can explore the API in a browser. We never wrote a line of it.</li>
+</ul>
+
+<div class="note">
+  <span class="label">📝 Why we didn't start with a framework</span>
+  <p>Plenty of courses would have opened at Phase 4 — "install FastAPI, here's a route." You'd have a working app and no idea what any of it meant. Because we built the socket server first, every one of those magic conveniences is now a <em>recognition</em>, not a mystery: "oh, <code>@app.post</code> is the routing I did with <code>if path == …</code>; the auto-JSON is the <code>build_response</code> encoding I did by hand." A framework you understand is a tool; a framework you don't is a cage. That's the whole reason for the order of this course.</p>
+</div>
+
+<h2 id="pc">Part C — REST: designing around resources and verbs</h2>
+
+<p>We could expose any jumble of endpoints we liked (<code>/getAllTheLinks</code>, <code>/doAnUpvoteNow</code>). But there's a widely-followed <em>style</em> for designing web APIs that makes them predictable, and it's called <strong>REST</strong>. You don't need its academic definition; you need its one core habit, which is genuinely simple:</p>
+
+<p class="chip">Nouns are <strong>resources</strong> (the things), expressed as paths. Verbs are <strong>HTTP methods</strong> (the actions), from Phase 3. You combine a verb and a noun to say what you want.</p>
+
+<p>A <strong>resource</strong> is a "thing" your app knows about — for LinkBoard, a <em>link</em> and a <em>comment</em>. In REST, you name resources with paths, and you <em>act</em> on them with the HTTP methods you already learned, rather than inventing a new verb-word for every action. So instead of <code>/getAllTheLinks</code>, you say <code>GET /links</code> — the method <em>is</em> the verb. Here's LinkBoard's whole API expressed that way:</p>
+
+<table>
+  <tr><th>You want to…</th><th>Verb + noun</th><th>Method</th><th>Path</th></tr>
+  <tr><td>list all links</td><td>read the links</td><td><code>GET</code></td><td><code>/links</code></td></tr>
+  <tr><td>read one link</td><td>read a link</td><td><code>GET</code></td><td><code>/links/3</code></td></tr>
+  <tr><td>submit a new link</td><td>create a link</td><td><code>POST</code></td><td><code>/links</code></td></tr>
+  <tr><td>upvote a link</td><td>act on a link</td><td><code>POST</code></td><td><code>/links/3/upvote</code></td></tr>
+  <tr><td>comment on a link</td><td>create a comment under a link</td><td><code>POST</code></td><td><code>/links/3/comments</code></td></tr>
+</table>
+
+<p>Notice two elegant things. First, <code>/links</code> means different things with different verbs: <code>GET /links</code> reads the collection, <code>POST /links</code> adds to it. Same noun, method chooses the action — exactly the safe/idempotent distinctions from <a href="../phase-03-http-deep-dive/lesson.html">Phase 3</a> doing real work. Second, a comment lives <em>underneath</em> the link it belongs to: <code>/links/3/comments</code>. That nesting mirrors the real relationship ("this comment belongs to that link") right in the URL.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 250" role="img" aria-label="LinkBoard's REST resource tree: the links collection contains individual links by id, and each link contains an upvote action and a comments sub-collection.">
+    <defs>
+      <marker id="rest-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path class="fig-arrow" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="250" y="20" width="160" height="40" rx="8"></rect>
+    <text class="fig-mono" x="330" y="45" text-anchor="middle">/links</text>
+    <text class="fig-t-sm" x="430" y="44" text-anchor="start">the collection</text>
+
+    <line class="fig-edge" x1="330" y1="60" x2="330" y2="92" marker-end="url(#rest-arrow)"></line>
+    <rect class="fig-box-you" x="250" y="96" width="160" height="40" rx="8"></rect>
+    <text class="fig-mono" x="330" y="121" text-anchor="middle">/links/3</text>
+    <text class="fig-t-sm" x="430" y="120" text-anchor="start">one link (by id)</text>
+
+    <line class="fig-edge" x1="300" y1="136" x2="200" y2="176" marker-end="url(#rest-arrow)"></line>
+    <line class="fig-edge" x1="360" y1="136" x2="460" y2="176" marker-end="url(#rest-arrow)"></line>
+
+    <rect class="fig-box" x="96" y="180" width="180" height="40" rx="8"></rect>
+    <text class="fig-mono" x="186" y="205" text-anchor="middle">/links/3/upvote</text>
+
+    <rect class="fig-box" x="384" y="180" width="180" height="40" rx="8"></rect>
+    <text class="fig-mono" x="474" y="205" text-anchor="middle">/links/3/comments</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the core resources you own (the links collection and each individual link); <strong>neutral</strong> = the actions and sub-collections hanging off a link. The URL structure mirrors the real containment: comments live inside a link, which lives inside the collection. A well-designed REST path is readable as an English sentence.</figcaption>
+</figure>
+
+<details class="check">
+  <summary>Quick check: why is <code>POST /links</code> better REST than <code>POST /createLink</code>, even though both work?</summary>
+  <p>Because REST puts the <em>verb</em> in the HTTP method and keeps the <em>path</em> a pure noun. <code>POST /links</code> says "create, within the links collection" using the method as the verb — so the <em>same</em> noun <code>/links</code> naturally supports <code>GET</code> (list) and <code>POST</code> (create) without inventing new words. <code>/createLink</code> bakes the verb into the path, so you'd soon need <code>/updateLink</code>, <code>/deleteLink</code>, <code>/getAllLinks</code>… a sprawling, unpredictable menu. The REST style means a client can <em>guess</em> your API: once they know links are at <code>/links</code>, they can reasonably expect <code>GET /links/3</code> and <code>DELETE /links/3</code>. Predictability is the whole win.</p>
+</details>
+
+<h2 id="pd">Part D — JSON &amp; serialization: turning objects into bytes</h2>
+
+<p>Our API sends and receives data as <strong>JSON</strong>. To understand why, first meet the problem it solves, which has a name worth knowing: <strong>serialization</strong>.</p>
+
+<p>Inside your running program, a link is a rich live object — a Python dictionary sitting in memory with fields and values, connected to other objects, existing as a pattern of bits at some memory address. You cannot send <em>that</em> across a network. A socket (Phase 2) carries only a flat stream of <span class="term" tabindex="0" data-def="The smallest unit of data a computer stores or sends — eight bits, one number from 0 to 255.">bytes</span>. So before an object can travel, it must be flattened into a plain sequence of bytes that the other side can rebuild. Flattening an object into bytes is <strong>serializing</strong> it; rebuilding the object from those bytes on the far end is <strong>deserializing</strong>. A serialization <em>format</em> is the agreed rules for how that flattening is done — and it's the very same "text is numbers plus an agreement" idea from <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>, scaled up from single characters to whole objects.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 200" role="img" aria-label="Serialization round trip: a live Python object is serialized into flat JSON text, sent as bytes over the wire, and deserialized back into a live object on the other side.">
+    <defs>
+      <marker id="ser-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="20" y="70" width="150" height="70" rx="8"></rect>
+    <text class="fig-t-sm" x="95" y="98" text-anchor="middle">live object</text>
+    <text class="fig-t-sm" x="95" y="118" text-anchor="middle">(in memory)</text>
+
+    <rect class="fig-box" x="255" y="70" width="150" height="70" rx="8"></rect>
+    <text class="fig-t-sm" x="330" y="98" text-anchor="middle">JSON text</text>
+    <text class="fig-mono" x="330" y="120" text-anchor="middle">{"id":3,…}</text>
+
+    <rect class="fig-box-you" x="490" y="70" width="150" height="70" rx="8"></rect>
+    <text class="fig-t-sm" x="565" y="98" text-anchor="middle">live object</text>
+    <text class="fig-t-sm" x="565" y="118" text-anchor="middle">(rebuilt)</text>
+
+    <line class="fig-edge-hi" x1="170" y1="95" x2="253" y2="95" marker-end="url(#ser-arrow)"></line>
+    <text class="fig-t-sm" x="211" y="86" text-anchor="middle">serialize</text>
+    <line class="fig-edge-hi" x1="405" y1="95" x2="488" y2="95" marker-end="url(#ser-arrow)"></line>
+    <text class="fig-t-sm" x="447" y="86" text-anchor="middle">deserialize</text>
+    <text class="fig-t-sm" x="330" y="165" text-anchor="middle">… travels the wire as bytes (Phase 2) …</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the live objects your code works with; <strong>neutral</strong> = the flat text form that can actually travel. Serialize to send, deserialize to receive — JSON is just one popular set of rules for that flattening, and our framework does both directions for us automatically.</figcaption>
+</figure>
+
+<h3>What JSON looks like</h3>
+
+<p><strong>JSON</strong> (JavaScript Object Notation) is the most common serialization format on the web, and it's deliberately simple — human-readable text built from a handful of pieces you already understand: objects (<code>{ }</code> with <code>"name": value</code> pairs), arrays (<code>[ ]</code> lists), strings, numbers, <code>true</code>/<code>false</code>, and <code>null</code>. Here's one LinkBoard link as JSON:</p>
+
+<pre><code>{
+  <span class="str">"id"</span>: <span class="num">3</span>,
+  <span class="str">"title"</span>: <span class="str">"HTTP by hand"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://example.com/http"</span>,
+  <span class="str">"points"</span>: <span class="num">5</span>,
+  <span class="str">"comments"</span>: []
+}</code></pre>
+
+<p>That's it — no surprises. It maps almost one-to-one onto a Python dictionary or a JavaScript object, which is exactly why it took over the web: the same shape works naturally in nearly every language.</p>
+
+<h3>JSON vs XML vs Protobuf</h3>
+
+<p>JSON isn't the only way to serialize. Two others come up constantly, and knowing the tradeoff is a real interview and design topic:</p>
+
+<table>
+  <tr><th>Format</th><th>Looks like</th><th>Strengths</th><th>Weaknesses</th></tr>
+  <tr><td><strong>JSON</strong></td><td>text: <code>{"points":5}</code></td><td>human-readable, universal, simple; native to browsers</td><td>bigger than binary; parsing text costs CPU; no built-in schema</td></tr>
+  <tr><td><strong>XML</strong></td><td>text: <code>&lt;points&gt;5&lt;/points&gt;</code></td><td>very expressive, mature tooling, strong schema/validation</td><td>verbose and heavy; fiddly to read and write; largely superseded by JSON for web APIs</td></tr>
+  <tr><td><strong>Protobuf</strong></td><td>binary (not human-readable)</td><td>tiny and very fast; strict schema; great for service-to-service at scale</td><td>needs a schema + code generation; you can't just eyeball it; overkill for simple apps</td></tr>
+</table>
+
+<p>The through-line: <strong>text formats (JSON, XML) are readable but bulky; binary formats (Protobuf) are compact and fast but opaque.</strong> The web chose JSON as its default because <em>readability and universality</em> usually beat raw efficiency for public APIs — you can debug a JSON response by just looking at it. When two internal services exchange millions of messages a second and nobody needs to read them by eye, Protobuf's compactness wins. LinkBoard uses JSON: it's public-facing, and clarity beats bytes here. (You'll meet Protobuf again if we reach high-throughput internal services.)</p>
+
+<div class="realworld">
+  <p>A classic design question: "your mobile app is slow on a bad connection — would switching from JSON to Protobuf help?" A thoughtful answer uses this whole section: <em>maybe</em> — Protobuf payloads are smaller, so on a bandwidth-starved link (<a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a>'s bandwidth vs latency!) less data means faster transfers, and parsing is cheaper on a weak CPU. But you'd trade away human-readable debugging and add a schema/build step, and if the real bottleneck is <em>latency</em> (too many round-trips) rather than payload <em>size</em>, a smaller format won't help at all — you'd batch requests instead. Naming the tradeoff <em>and</em> questioning whether it addresses the actual bottleneck is exactly the muscle these phases build.</p>
+</div>
+
+<h2 id="pe">Part E — The data structures underneath it all</h2>
+
+<p>Time to look one level down. Every framework, cache, router, and database in this course is built on a small set of <strong>data structures</strong> — the basic ways a program arranges data in memory. Two of them, plus one way of measuring them, will follow you through every remaining phase. We meet them here because LinkBoard's routing and lookups already use them.</p>
+
+<h3>Big-O: "what happens at 1000×?"</h3>
+
+<p>First, the measuring stick. When we ask whether some operation is "fast," the question that actually matters for a growing system is <em>not</em> "how long does it take now?" but "<strong>how does the time grow as the data grows?</strong>" A method that's fine for 100 links might melt for 100 million. <strong>Big-O notation</strong> is the shorthand for that growth rate. Read it as "if the data gets 1000× bigger, what happens to the work?"</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 280" role="img" aria-label="Big-O growth curves on axes of input size versus work: O(1) is flat, O(log n) rises slowly, O(n) rises linearly, and O(n squared) shoots up steeply.">
+    <!-- axes -->
+    <line class="fig-edge" x1="70" y1="30" x2="70" y2="240"></line>
+    <line class="fig-edge" x1="70" y1="240" x2="620" y2="240"></line>
+    <text class="fig-t-sm" x="40" y="130" text-anchor="middle" transform="rotate(-90 40 130)">work / time</text>
+    <text class="fig-t-sm" x="345" y="266" text-anchor="middle">input size (n) →</text>
+
+    <!-- O(n^2): steep -->
+    <path class="fig-edge-hi" d="M70,240 Q210,235 320,150 T560,40" fill="none"></path>
+    <text class="fig-t-hi" x="566" y="42" text-anchor="start">O(n²)</text>
+
+    <!-- O(n): linear -->
+    <line class="fig-edge" x1="70" y1="240" x2="600" y2="70"></line>
+    <text class="fig-t-sm" x="606" y="70" text-anchor="start">O(n)</text>
+
+    <!-- O(log n): slow rise -->
+    <path class="fig-edge-dash" d="M70,232 Q220,180 400,168 T600,158" fill="none"></path>
+    <text class="fig-t-sm" x="606" y="158" text-anchor="start">O(log n)</text>
+
+    <!-- O(1): flat -->
+    <line class="fig-edge" x1="70" y1="218" x2="600" y2="218"></line>
+    <text class="fig-t-sm" x="606" y="214" text-anchor="start">O(1)</text>
+  </svg>
+  <figcaption>How work grows as input <em>n</em> grows. <strong>O(1)</strong> flat — same work no matter the size (the dream). <strong>O(log n)</strong> barely rises — 1000× the data, only ~10× the work. <strong>O(n)</strong> linear — 1000× data, 1000× work. <strong>O(n²)</strong> (highlighted) explodes — 1000× data, a <em>million</em>× work. The whole game of scalable systems is keeping the hot paths near the bottom curves.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>O(1) — constant.</strong> Same work regardless of size. Looking up a value by key in a hash map (below). The gold standard.</li>
+  <li><strong>O(log n) — logarithmic.</strong> Grows painfully slowly. Finding a row via a database index (Phase 6's B-trees). 1000× the data costs only about 10× the work.</li>
+  <li><strong>O(n) — linear.</strong> Work grows in step with data. Scanning every link to find one. Fine for 100, a problem for 100 million.</li>
+  <li><strong>O(n²) — quadratic.</strong> Work grows with the <em>square</em>. A loop inside a loop over the same data. Deadly: this is what "it worked in testing and died in production" often looks like.</li>
+</ul>
+
+<h3>Arrays vs linked lists: two ways to hold a sequence</h3>
+
+<p>When you have a <em>list</em> of things (like LinkBoard's links), there are two fundamental ways to lay them out in memory, and they trade off differently:</p>
+
+<ul>
+  <li>An <strong>array</strong> stores the items in one continuous block, back to back. Because they're contiguous, jumping to "item number 500" is instant math (start + 500 × size) — <strong>O(1)</strong> access by position. The cost: inserting into the middle means shifting everything after it over to make room — <strong>O(n)</strong>. Think of theatre seats bolted in a row: finding seat 12 is trivial; adding a seat in the middle means everyone shuffles down.</li>
+  <li>A <strong>linked list</strong> scatters the items anywhere in memory, and each item holds a pointer to the next. Inserting is cheap — just re-point a couple of arrows, <strong>O(1)</strong> — but finding "item number 500" means walking the chain from the start, <strong>O(n)</strong>. Think of a treasure hunt where each clue points to the next: easy to splice in a new clue, but to reach the 500th you must follow all 499 before it.</li>
+</ul>
+
+<p>Neither is "better" — they're opposite trades (fast access vs fast insertion), and choosing correctly is real engineering. Python's <code>list</code> (which LinkBoard uses) is an array under the hood, which is why appending is cheap but our <code>GET /links/3</code> currently scans the list — <strong>O(n)</strong> — to find id 3. Fine for three links; a real database will make it fast later.</p>
+
+<h3>The hash map: O(1) lookup, and the soul of half this course</h3>
+
+<p>Now the most important data structure you'll meet all year. A <strong>hash map</strong> (also called a hash table, a dictionary, or just a "map") stores <em>key → value</em> pairs and can find the value for a key in <strong>O(1)</strong> — constant time, no matter how many pairs it holds. That near-magical property makes it the engine behind an astonishing amount of computing.</p>
+
+<p>How does it pull off O(1)? Through a <strong>hash function</strong> — a bit of math that takes a key (say the string <code>"links"</code>) and rapidly turns it into a number, which it uses as a direct index into an array of "buckets." Instead of <em>searching</em> for the key, it <em>computes</em> where the key must be and jumps straight there. It's the difference between scanning every page of a book for a topic (O(n)) versus using the index at the back to jump straight to the page (O(1)).</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 220" role="img" aria-label="A hash map: a key is fed through a hash function that produces a bucket index, jumping directly to the stored value without searching.">
+    <defs>
+      <marker id="hash-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="20" y="86" width="120" height="44" rx="8"></rect>
+    <text class="fig-mono" x="80" y="113" text-anchor="middle">"links"</text>
+    <text class="fig-t-sm" x="80" y="150" text-anchor="middle">the key</text>
+
+    <rect class="fig-box-infra" x="196" y="80" width="130" height="56" rx="8"></rect>
+    <text class="fig-t-sm" x="261" y="104" text-anchor="middle">hash function</text>
+    <text class="fig-t-sm" x="261" y="122" text-anchor="middle">→ 2</text>
+
+    <!-- buckets -->
+    <rect class="fig-box" x="420" y="40" width="180" height="30" rx="5"></rect>
+    <text class="fig-mono" x="435" y="61" text-anchor="start">0:</text>
+    <rect class="fig-box" x="420" y="76" width="180" height="30" rx="5"></rect>
+    <text class="fig-mono" x="435" y="97" text-anchor="start">1:</text>
+    <rect class="fig-box-you" x="420" y="112" width="180" height="30" rx="5"></rect>
+    <text class="fig-mono" x="435" y="133" text-anchor="start">2: → the value</text>
+    <rect class="fig-box" x="420" y="148" width="180" height="30" rx="5"></rect>
+    <text class="fig-mono" x="435" y="169" text-anchor="start">3:</text>
+
+    <line class="fig-edge-hi" x1="140" y1="108" x2="194" y2="108" marker-end="url(#hash-arrow)"></line>
+    <line class="fig-edge-hi" x1="326" y1="108" x2="418" y2="127" marker-end="url(#hash-arrow)"></line>
+    <text class="fig-t-sm" x="510" y="200" text-anchor="middle">jump straight to bucket 2 — no searching</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = your key and the value it lands on; <strong>teal</strong> = the hash function that computes a bucket index. The key isn't <em>searched</em> for — its position is <em>computed</em>, so lookup takes the same tiny time whether the map holds ten entries or ten million. That's the O(1) that powers routing, caching, and indexing.</figcaption>
+</figure>
+
+<p class="chip">CS fundamental: the hash map is the "soul" behind a huge fraction of this course. A framework's <strong>router</strong> maps <code>method+path → handler</code> with one (Phase 4). A <strong>cache</strong> like Redis is essentially a giant hash map of <code>key → value</code> (Phase 8). A database <strong>index</strong> is a lookup structure so you don't scan every row (Phase 6). Even DNS (<a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a>) is conceptually <code>name → address</code>. When you see "fast lookup by key," think hash map.</p>
+
+<details class="check">
+  <summary>Quick check: our <code>GET /links/3</code> scans the list to find id 3 — what big-O is that, and what structure would make it O(1)?</summary>
+  <p>Scanning the list checks links one by one until it finds id 3, so in the worst case it looks at every link — that's <strong>O(n)</strong>, linear in the number of links. Storing links in a <strong>hash map</strong> keyed by id (<code>{3: link}</code>) instead of a plain array would turn that lookup into <strong>O(1)</strong>: hash the id, jump straight to the bucket, done — the same tiny cost whether there are 3 links or 3 million. This is precisely what a database's primary-key <em>index</em> does for you (Phase 6). For LinkBoard's three seed links the O(n) scan is invisibly fast; the point is to <em>see</em> the shape now so that when the feed query is slow over a million rows later, you already know the fix has a name.</p>
+</details>
+
+<h2 id="pf">Part F — Webhooks: "don't call us, we'll call you"</h2>
+
+<p>Everything so far has the client <em>asking</em> and the server <em>answering</em> — the client always starts. But sometimes you want the reverse: you want to be <em>told</em> when something happens, without sitting there asking "did it happen yet? did it happen yet?" over and over. That repeated asking is called <strong>polling</strong>, and it's wasteful — most of the checks find nothing new, burning requests and battery.</p>
+
+<p>A <strong>webhook</strong> flips it around. Instead of you polling someone else's server, you give them a URL of <em>yours</em> and say: "when the thing happens, send an HTTP request to this URL." Now <em>they</em> call <em>you</em>, once, exactly when there's news. It's the "don't call us, we'll call you" of the web — you register a callback and then stop asking.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 240" role="img" aria-label="Polling versus webhooks: on the left the client repeatedly asks 'any news?' and mostly hears no; on the right the client registers once and the server calls it back only when news happens.">
+    <defs>
+      <marker id="wh-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path class="fig-arrow" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <text class="fig-t-hi" x="165" y="26" text-anchor="middle">Polling</text>
+    <text class="fig-t-sm" x="165" y="52" text-anchor="middle">ask again and again</text>
+    <text class="fig-t-sm" x="165" y="82" text-anchor="middle">"any news?" → no</text>
+    <text class="fig-t-sm" x="165" y="104" text-anchor="middle">"any news?" → no</text>
+    <text class="fig-t-sm" x="165" y="126" text-anchor="middle">"any news?" → no</text>
+    <text class="fig-t-sm" x="165" y="148" text-anchor="middle">"any news?" → YES</text>
+    <text class="fig-t-sm" x="165" y="182" text-anchor="middle">3 wasted round-trips</text>
+
+    <line class="fig-vs" x1="330" y1="40" x2="330" y2="200"></line>
+    <text class="fig-vs-t" x="330" y="130" text-anchor="middle">VS</text>
+
+    <text class="fig-t-hi" x="495" y="26" text-anchor="middle">Webhook</text>
+    <text class="fig-t-sm" x="495" y="52" text-anchor="middle">register once, then wait</text>
+    <rect class="fig-box-you" x="400" y="70" width="190" height="30" rx="5"></rect>
+    <text class="fig-t-sm" x="495" y="90" text-anchor="middle">"call this URL when it happens"</text>
+    <text class="fig-t-sm" x="495" y="126" text-anchor="middle">… (silence, no asking) …</text>
+    <rect class="fig-box" x="400" y="140" width="190" height="30" rx="5"></rect>
+    <text class="fig-t-sm" x="495" y="160" text-anchor="middle">server → you: "it happened!"</text>
+    <text class="fig-t-sm" x="495" y="192" text-anchor="middle">one call, exactly when needed</text>
+  </svg>
+  <figcaption>Left: polling asks repeatedly and mostly hears "no" — wasted requests. Right (orange, the registration you set up): a webhook registers one callback URL and the server calls you back <em>only</em> when there's real news. Same information, a fraction of the traffic.</figcaption>
+</figure>
+
+<p>You've received webhooks without knowing it. When a payment provider tells your shop "this order was paid," when GitHub tells a build server "someone pushed code," when a chat app posts "a new message arrived" — those are webhooks: one server making an HTTP request <em>to</em> another because an event occurred. It's a genuinely important pattern for connecting systems, and it's just plain HTTP pointed the other direction. (Webhooks are event notifications; when we need a truly <em>live</em>, two-way channel — like a feed that updates as you watch — that's WebSockets, Phase 14.)</p>
+
+<h2 id="pg">Part G — The race that eats a vote</h2>
+
+<p>LinkBoard v1 works. It stores data in a file, survives restarts, serves JSON. And it contains a flaw that will corrupt your data the moment two people act at once — a flaw so important that fixing it is the reason the next big chapter of this course exists. Let's make it happen on purpose.</p>
+
+<h3>The setup: read, modify, write</h3>
+
+<p>Look at how an upvote works in <code>storage.py</code>. To add a point to a link, the code does three steps: <strong>(1) read</strong> the current score from the file, <strong>(2)</strong> compute <strong>new = old + 1</strong> in memory, <strong>(3) write</strong> the whole file back. Perfectly sensible — one at a time. The trouble is that these three steps are <em>not</em> a single indivisible action. There's a gap between reading and writing, and in that gap, another request can sneak in.</p>
+
+<p>Recall from <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a> that separate requests can run on separate <span class="term" tabindex="0" data-def="Independent streams of execution inside one program that can run at the same time and share memory — the source of race conditions.">threads</span> at genuinely the same time. FastAPI runs our upvote handler in a thread pool, so two upvotes really do overlap. Here's the disaster, step by step, when link #1 starts at 5 points and two people upvote simultaneously:</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 300" role="img" aria-label="A lost update: two voters both read the score as 5, both compute 6, and both write 6, so two upvotes only raise the score by one — one vote is lost.">
+    <defs>
+      <marker id="lu-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="40" y="20" width="150" height="36" rx="8"></rect>
+    <text class="fig-t" x="115" y="44" text-anchor="middle">Voter A</text>
+    <rect class="fig-box" x="255" y="20" width="150" height="36" rx="8"></rect>
+    <text class="fig-t" x="330" y="44" text-anchor="middle">the file</text>
+    <rect class="fig-box-you" x="470" y="20" width="150" height="36" rx="8"></rect>
+    <text class="fig-t" x="545" y="44" text-anchor="middle">Voter B</text>
+    <line class="fig-edge-dash" x1="115" y1="56" x2="115" y2="288"></line>
+    <line class="fig-edge-dash" x1="330" y1="56" x2="330" y2="288"></line>
+    <line class="fig-edge-dash" x1="545" y1="56" x2="545" y2="288"></line>
+
+    <line class="fig-edge-hi" x1="115" y1="86" x2="330" y2="86" marker-end="url(#lu-arrow)"></line>
+    <text class="fig-t-sm" x="150" y="80" text-anchor="start">A reads 5</text>
+    <line class="fig-edge-hi" x1="545" y1="116" x2="330" y2="116" marker-end="url(#lu-arrow)"></line>
+    <text class="fig-t-sm" x="510" y="110" text-anchor="end">B reads 5</text>
+
+    <text class="fig-t-sm" x="115" y="150" text-anchor="middle">A: 5 + 1 = 6</text>
+    <text class="fig-t-sm" x="545" y="150" text-anchor="middle">B: 5 + 1 = 6</text>
+
+    <line class="fig-edge-hi" x1="115" y1="182" x2="330" y2="182" marker-end="url(#lu-arrow)"></line>
+    <text class="fig-t-sm" x="150" y="176" text-anchor="start">A writes 6</text>
+    <line class="fig-edge-hi" x1="545" y1="212" x2="330" y2="212" marker-end="url(#lu-arrow)"></line>
+    <text class="fig-t-sm" x="510" y="206" text-anchor="end">B writes 6 (clobbers A)</text>
+
+    <rect class="fig-box-ext" x="255" y="240" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="330" y="265" text-anchor="middle">file = 6, not 7</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the two voters (each a legitimate request); <strong>violet</strong> = the corrupted result. Both read the same starting value (5) before either writes, so both compute 6, and the second write overwrites the first. Two upvotes, but the score rose by only one — a <strong>lost update</strong>. Nobody did anything wrong; the <em>interleaving</em> did the damage.</figcaption>
+</figure>
+
+<p class="chip">CS fundamental: this is a <strong>race condition</strong> — the correctness of the result depends on the exact timing ("race") of concurrent operations. It's the network-and-data cousin of the shared-counter race you saw between threads in <a href="../phase-01-how-a-computer-works/lesson.html">Phase 1</a>. There it was two threads and a variable; here it's two HTTP requests and a file. Same monster, bigger stage.</p>
+
+<p>The <code>race_demo.py</code> script fires two upvotes at the exact same instant (using a "barrier" so they truly launch together), and — because <code>storage.py</code> deliberately widens the read-to-write gap with a tiny sleep — the lost update happens <em>every</em> run, not once in a thousand. You'll cast two votes and watch the score rise by one, live in the logs.</p>
+
+<div class="warn">
+  <span class="label">⚠️ Why we can't just "be more careful"</span>
+  <p>The instinct is to fix this with tidier code, but you can't — the flaw is structural. As long as "read, modify, write" is three separate steps on shared data with no coordination, some interleaving will corrupt it; making the steps faster only makes the bug <em>rarer</em> and therefore <em>harder to catch</em>. The real fixes are specific mechanisms: a <strong>lock</strong> (only one upvote in the critical section at a time — Phase 1's idea), an <strong>atomic operation</strong> ("increment" as one indivisible step the storage layer guarantees), or a database <strong>transaction</strong> (Phase 6, which wraps read-modify-write so the database enforces it can't be split). A plain JSON file offers none of these, which is precisely why real applications outgrow files fast. That outgrowing is the bridge into Phase 6.</p>
+</div>
+
+<h2 id="code">The code we wrote</h2>
+
+<p>Three new files in <code>project/</code>, and the raw-socket <code>server.py</code> stays as the origin story. This is the first phase where the code uses Python <strong>type hints</strong> (annotations like <code>title: str</code> that name what type a value should be) and <strong>decorators</strong> (the <code>@app.get(...)</code> lines) — the framework leans on both, so they get their own syntax colours from here on.</p>
+
+<h3>1. The app: routes as decorated functions (<code>app.py</code>)</h3>
+
+<p>Each route is a normal function wearing a decorator that tells the framework which method and path it answers. Compare this to Phase 3's <code>if</code>/<code>elif</code> tree — the routing is now one clean line per endpoint:</p>
+
+<pre><code><span class="an">@app.get</span>(<span class="str">"/links"</span>)
+<span class="kw">def</span> <span class="fn">list_links</span>():
+    <span class="c"># A READ, so it's a GET. Whatever we return, FastAPI turns into JSON.</span>
+    links = storage.<span class="fn">list_links</span>()
+    <span class="kw">return</span> {<span class="str">"count"</span>: <span class="fn">len</span>(links), <span class="str">"links"</span>: links}
+
+<span class="an">@app.post</span>(<span class="str">"/links"</span>, status_code=<span class="num">201</span>)
+<span class="kw">def</span> <span class="fn">submit_link</span>(payload: <span class="ty">LinkIn</span>):
+    <span class="c"># `payload: LinkIn` means: parse the JSON body into a LinkIn and VALIDATE it</span>
+    <span class="c"># BEFORE this runs. If title/url are missing, FastAPI 422s automatically.</span>
+    link = storage.<span class="fn">add_link</span>(payload.title, payload.url)
+    <span class="kw">return</span> link   <span class="c"># 201 Created (Phase 3's honest "a new thing was made")</span></code></pre>
+
+<h3>2. Validation by declaration (the Pydantic models)</h3>
+
+<p>We describe the shape we expect as a class, and the framework enforces it. We never write "if title is missing, return an error" — declaring the type <em>is</em> the check:</p>
+
+<pre><code><span class="kw">class</span> <span class="ty">LinkIn</span>(<span class="ty">BaseModel</span>):
+    <span class="c"># The body a client must send to submit a link.</span>
+    title: <span class="ty">str</span> = <span class="fn">Field</span>(min_length=<span class="num">1</span>, max_length=<span class="num">200</span>)
+    url: <span class="ty">str</span> = <span class="fn">Field</span>(min_length=<span class="num">1</span>)</code></pre>
+
+<p>Send <code>POST /links</code> with a missing <code>title</code> and you get an automatic, precise <code>422</code> error explaining exactly what was wrong — validation we'd have hand-written a dozen times in the socket server, now free.</p>
+
+<h3>3. Storage: the read-modify-write flaw, on purpose (<code>storage.py</code>)</h3>
+
+<p>All file access lives in one module. The upvote is the star — its three steps, and the deliberately widened gap that makes the race reproducible:</p>
+
+<pre><code><span class="kw">def</span> <span class="fn">upvote_link</span>(link_id: <span class="ty">int</span>):
+    data = <span class="fn">_read</span>()                          <span class="c"># STEP 1: read the whole file</span>
+    link = <span class="fn">next</span>((l <span class="kw">for</span> l <span class="kw">in</span> data[<span class="str">"links"</span>] <span class="kw">if</span> l[<span class="str">"id"</span>] == link_id), <span class="kw">None</span>)
+    <span class="kw">if</span> link <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="kw">return</span> <span class="kw">None</span>
+
+    old = link[<span class="str">"points"</span>]                    <span class="c"># read the score</span>
+    time.<span class="fn">sleep</span>(RACE_WINDOW_SECONDS)          <span class="c"># STEP 2: the danger window (widened)</span>
+    link[<span class="str">"points"</span>] = old + <span class="num">1</span>              <span class="c"># STEP 3: modify + write it all back</span>
+    <span class="fn">_write</span>(data)
+    <span class="kw">return</span> link</code></pre>
+
+<h3>4. The race demo: two votes at once (<code>race_demo.py</code>)</h3>
+
+<p>Pure standard library (so it needs no venv). It reads the score, launches two threads held at a <span class="term" tabindex="0" data-def="A synchronization tool that makes several threads wait until all have arrived, then releases them together.">barrier</span> so they fire together, then reads the score again and reports whether a vote vanished:</p>
+
+<pre><code>barrier = threading.<span class="fn">Barrier</span>(<span class="num">2</span>)          <span class="c"># two voters line up, then GO together</span>
+threads = [threading.<span class="fn">Thread</span>(target=upvote, args=(link_id, i, barrier))
+           <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">2</span>)]
+<span class="kw">for</span> t <span class="kw">in</span> threads: t.<span class="fn">start</span>()
+<span class="kw">for</span> t <span class="kw">in</span> threads: t.<span class="fn">join</span>()      <span class="c"># wait for both, then compare before/after</span></code></pre>
+
+<h2 id="run">Run it &amp; watch the logs</h2>
+
+<p>Everything runs <strong>inside WSL</strong>. This phase installs two packages, so we use a <span class="term" tabindex="0" data-def="An isolated per-project Python environment so a project's packages don't collide with the system or other projects.">virtual environment</span> — a private sandbox of packages for this project.</p>
+
+<h3>Step 0 — one-time setup</h3>
+
+<pre><code>cd /mnt/d/Projects/linkboard/project
+
+<span class="c"># Create an isolated environment and switch into it:</span>
+python3 -m venv .venv
+source .venv/bin/activate            <span class="c"># your prompt now shows (.venv)</span>
+
+<span class="c"># Install FastAPI + the uvicorn server into THIS project only:</span>
+pip install -r requirements.txt</code></pre>
+
+<p>Expected: pip downloads fastapi, uvicorn, pydantic and a few helpers, ending with <code>Successfully installed …</code>. If <code>python3 -m venv</code> complains, run <code>sudo apt install -y python3-venv</code> first.</p>
+
+<h3>Step 1 — start the API</h3>
+
+<pre><code>uvicorn app:app --reload --port 8000</code></pre>
+
+<p>Expected — uvicorn boots and waits, and (thanks to <code>--reload</code>) will restart itself whenever you edit the code:</p>
+
+<pre><code>INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process
+<span class="hi">INFO:     Application startup complete.</span></code></pre>
+
+<h3>Step 2 — meet the free docs page</h3>
+
+<p>Open <strong><code>http://localhost:8000/docs</code></strong> in a browser. You'll see an interactive API explorer — every endpoint listed, each expandable, with a "Try it out" button that sends real requests. <em>We never wrote this.</em> FastAPI generated it from our route functions and Pydantic models. Click into <code>GET /links</code>, hit "Try it out" → "Execute," and watch the JSON come back — and see the request appear in the server's logs.</p>
+
+<h3>Step 3 — drive the API from the terminal</h3>
+
+<p>In <strong>terminal 2</strong> (no venv needed for curl):</p>
+
+<pre><code><span class="c"># List the seed links (piped through json.tool to pretty-print):</span>
+curl -s localhost:8000/links | python3 -m json.tool
+
+<span class="c"># Submit a new link (a POST with a JSON body):</span>
+curl -s -X POST localhost:8000/links \
+     -H <span class="str">"Content-Type: application/json"</span> \
+     -d <span class="str">'{"title":"A great read","url":"https://example.com"}'</span> | python3 -m json.tool
+
+<span class="c"># Upvote link 1, then comment on it:</span>
+curl -s -X POST localhost:8000/links/1/upvote | python3 -m json.tool
+curl -s -X POST localhost:8000/links/1/comments \
+     -H <span class="str">"Content-Type: application/json"</span> \
+     -d <span class="str">'{"author":"ada","text":"Loved this!"}'</span> | python3 -m json.tool</code></pre>
+
+<p>In terminal 1 you'll see the request-journey logs for each call: a <code>[REQUEST]</code> line as it arrives, the <code>[STORE]</code> lines as storage reads/writes the file, an <code>[API]</code> line for the decision, and a <code>[RESPONSE]</code> line with the status and timing. That's the same flow-narration as the socket server — the framework just produces it for you now.</p>
+
+<h3>Step 4 — the main event: watch a vote get eaten</h3>
+
+<p>With the API still running in terminal 1, run the race demo in <strong>terminal 2</strong>:</p>
+
+<pre><code>python3 race_demo.py</code></pre>
+
+<p>Expected — the demo reads the score, fires two upvotes together, and reports the damage:</p>
+
+<pre><code>14:22:01.100 [DEMO] score BEFORE: 12
+14:22:01.101 [DEMO] firing 2 upvotes at the exact same moment...
+14:22:01.102 [VOTER] voter 1 sending its upvote NOW
+14:22:01.102 [VOTER] voter 2 sending its upvote NOW
+14:22:01.350 [DEMO] score AFTER: 13
+14:22:01.351 [DEMO] we cast 2 votes; the score rose by 1
+<span class="hi">14:22:01.351 [DEMO] *** 1 vote(s) LOST to a race condition. ***</span></code></pre>
+
+<p>Now look at <strong>terminal 1's</strong> logs during those upvotes — the smoking gun:</p>
+
+<pre><code>14:22:01.102 [RACE] upvote id=1: read points=12 (now thinking for 0.15s — the danger window)
+14:22:01.102 [RACE] upvote id=1: read points=12 (now thinking for 0.15s — the danger window)
+14:22:01.255 [RACE] upvote id=1: wrote points=13 (if another upvote read 12 too, its vote is now LOST)
+14:22:01.256 [RACE] upvote id=1: wrote points=13 (if another upvote read 12 too, its vote is now LOST)</code></pre>
+
+<p><strong>What this proves:</strong> both upvotes read <code>points=12</code> — the identical old value — <em>before</em> either wrote. Both then wrote 13. The second write didn't add to the first; it <em>replaced</em> it. Two legitimate votes, one survived. This is the lost update of Part G, and no amount of careful coding removes it — only a lock, an atomic operation, or a database transaction does. That's the door into Phase 6.</p>
+
+<h3>Step 5 — stop</h3>
+
+<p>In terminal 1, press <strong>Ctrl+C</strong> to stop uvicorn. Run <code>deactivate</code> to leave the virtual environment when you're done.</p>
+
+<h2 id="break">Break it / observe it</h2>
+
+<p>Optional experiments. Each pokes one idea from this phase.</p>
+
+<ol>
+  <li><strong>Watch validation reject you.</strong> Submit a link with a missing field: <code>curl -s -X POST localhost:8000/links -H "Content-Type: application/json" -d '{"title":"no url here"}'</code>. You get a precise <code>422</code> naming <code>url</code> as required — a check you never wrote. Try an empty title (<code>"title":""</code>) and watch <code>min_length</code> catch it too.</li>
+  <li><strong>Prove the race is timing, not logic.</strong> Open <code>storage.py</code>, set <code>RACE_WINDOW_SECONDS = 0.0</code>, save (uvicorn auto-reloads), and run <code>race_demo.py</code> a few times. Now the vote is usually <em>not</em> lost — the gap got too narrow to reliably interleave. The bug didn't go away; it got <em>rarer</em>, which is exactly what makes real races so nasty to catch. Set it back to <code>0.15</code>.</li>
+  <li><strong>Feel O(n) vs O(1) in the router.</strong> Notice every request is routed instantly no matter how many routes exist — that's the framework's hash-map router (Part E). But <code>GET /links/3</code> scans the list to find id 3. With three links you can't feel it; imagine a million. That felt-instant-router vs scanned-list contrast <em>is</em> the O(1)-vs-O(n) distinction in your own app.</li>
+  <li><strong>See serialization both ways.</strong> <code>curl -s localhost:8000/links/1 | python3 -m json.tool</code> shows the server serializing a Python object to JSON text. Your <code>-d '{"title":…}'</code> on a POST is the reverse — the server deserializing your JSON text into a validated object. You're watching Part D's round-trip from both ends.</li>
+  <li><strong>Inspect the file that is the "database."</strong> <code>cat links.json</code> (or open it) after a few submits and upvotes. It's just the JSON you've been reading — no magic, no database, one text file. Delete it and restart the server: it regenerates from the seed. That fragility (and the fact that a crash mid-write could corrupt it) is more motivation for Phase 6.</li>
+</ol>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>New terms this phase, in plain words:</p>
+
+<ul>
+  <li><strong>API (Application Programming Interface)</strong> — a stable "menu" of requests one program offers to others, hiding its internals. A <strong>web API</strong> uses HTTP requests as the menu and JSON as the responses.</li>
+  <li><strong>Framework</strong> — a library that handles the repetitive plumbing (routing, parsing, validation, serialization) so you write only your app's unique logic. Ours is <strong>FastAPI</strong>; <strong>uvicorn</strong> is the server that runs it.</li>
+  <li><strong>REST</strong> — a style for web APIs: name things as <strong>resources</strong> (nouns, in the path) and act on them with HTTP <strong>methods</strong> (verbs). <code>GET /links</code> reads; <code>POST /links</code> creates.</li>
+  <li><strong>Resource</strong> — a "thing" the API exposes (a link, a comment), addressed by a path; sub-resources nest (<code>/links/3/comments</code>).</li>
+  <li><strong>Serialization / deserialization</strong> — flattening a live object into bytes to send (serialize) and rebuilding it on the other side (deserialize). A serialization <strong>format</strong> is the agreed rules.</li>
+  <li><strong>JSON</strong> — the web's default text serialization format: objects, arrays, strings, numbers, booleans, null. Readable and universal. <strong>XML</strong> — older, verbose, schema-strong text format. <strong>Protobuf</strong> — compact fast binary format needing a schema; for high-throughput internal services.</li>
+  <li><strong>Big-O</strong> — how an operation's work grows with data size: <strong>O(1)</strong> constant, <strong>O(log n)</strong> very slow growth, <strong>O(n)</strong> linear, <strong>O(n²)</strong> quadratic (explodes).</li>
+  <li><strong>Array vs linked list</strong> — contiguous storage (O(1) access by position, O(n) insert) vs pointer-chained storage (O(1) insert, O(n) access). Opposite trades.</li>
+  <li><strong>Hash map</strong> — a key→value store with O(1) lookup, via a <strong>hash function</strong> that computes where a key lives instead of searching. The engine behind routers, caches, and indexes.</li>
+  <li><strong>Webhook</strong> — a callback URL you register so a server calls <em>you</em> when an event happens, instead of you <strong>polling</strong> (asking repeatedly).</li>
+  <li><strong>Race condition / lost update</strong> — a bug where the result depends on the timing of concurrent operations; a lost update is when two read-modify-writes overlap and one silently overwrites the other.</li>
+  <li><strong>Type hint / decorator</strong> — a Python annotation naming a value's expected type (<code>title: str</code>), and a <code>@name</code> tag that wraps a function (<code>@app.get(...)</code>) — both used heavily by the framework.</li>
+</ul>
+
+<h2 id="challenges">Challenges &amp; Questions</h2>
+
+<p>Totally optional, answers hidden — think first if you feel like it, or just reveal them.</p>
+
+<details>
+<summary><strong>Q1.</strong> A teammate proposes API endpoints <code>/getLinks</code>, <code>/addLink</code>, <code>/upvoteLink?id=3</code>, and <code>/removeLink?id=3</code>. Rewrite them in REST style, and explain what the REST versions gain.</summary>
+<p>RESTful versions: <code>GET /links</code>, <code>POST /links</code>, <code>POST /links/3/upvote</code>, and <code>DELETE /links/3</code>. The gains (Part C): the <em>verb</em> moves into the HTTP method, so the <em>path</em> stays a clean noun that can serve multiple actions (<code>GET</code> and <code>POST</code> on the same <code>/links</code>). The API becomes <em>predictable</em> — a client who learns <code>/links/3</code> can guess <code>GET</code> (read), <code>DELETE</code> (remove) without a lookup table of verb-words. It also lets HTTP's built-in semantics do real work: <code>GET</code> is safe (cacheable, crawlable), <code>DELETE</code> is idempotent (retry-safe) — properties from <a href="../phase-03-http-deep-dive/lesson.html">Phase 3</a> that a <code>/removeLink</code> path throws away. The one <code>id</code> in a query string (<code>?id=3</code>) also becomes part of the resource path (<code>/links/3</code>), which reads as the actual thing being addressed.</p>
+</details>
+
+<details>
+<summary><strong>Q2.</strong> Your app's feed loads instantly with 500 links but takes 40 seconds with 5 million. You didn't change the code. Using Part E, name the most likely culprit and the general shape of the fix.</summary>
+<p>The likely culprit is an operation whose cost grows with the data — an <strong>O(n)</strong> scan (or worse, an <strong>O(n²)</strong> nested loop) that was invisibly fast at 500 items and became unbearable at 5 million (Part E's "what happens at 1000×?"). LinkBoard's own <code>GET /links/3</code> scanning the list is exactly this shape. The general fix is to replace scanning with <em>looking up</em>: a structure that finds items by key in <strong>O(1)</strong> or <strong>O(log n)</strong> instead of checking every one — a hash map, or in a database, an <strong>index</strong> (Phase 6's B-trees, O(log n)). If it's an O(n²) double loop, the fix is often to build a hash map of one dataset first, then do single O(1) lookups against it, collapsing O(n²) to O(n). The instinct to reach for — "stop scanning, start indexing" — is one of the most reused moves in all of performance work.</p>
+</details>
+
+<details>
+<summary><strong>Q3.</strong> We could have made the upvote endpoint <code>async def</code> instead of <code>def</code>. The lesson says that would have <em>hidden</em> the race. Why — and why is a hidden race worse than a visible one?</summary>
+<p>FastAPI runs a plain <code>def</code> endpoint in a <em>thread pool</em>, so two upvotes execute on two real threads at genuinely the same time — the overlap that causes the lost update (Part G). An <code>async def</code> endpoint instead runs on a single event-loop thread, and cooperatively yields only at <code>await</code> points; since our upvote does file I/O without awaiting in the gap, two async upvotes would effectively run one-then-the-other, and the score would look correct in the demo. But the race <em>still exists</em> — it would reappear the moment there's an <code>await</code> mid-operation, or a second server process, or a real database accessed concurrently. A race you can reproduce is a race you can fix; a race that hides in testing and only strikes under production load (two servers, real concurrency) is the kind that corrupts data for weeks before anyone believes it's real. We chose the sync version precisely so the bug is honest and visible — the lesson is "concurrency bugs are timing-dependent and love to hide," which is itself the argument for structural fixes (locks, transactions) over "it passed the tests."</p>
+</details>
+
+<details>
+<summary><strong>Q4.</strong> When would you actually reach for Protobuf over JSON, and when would reaching for it be a mistake?</summary>
+<p><strong>Reach for Protobuf</strong> (Part D) when: two <em>internal</em> services exchange a very high volume of messages, where payload size and parse speed dominate, nobody needs to read the messages by eye, and you already have a build pipeline that can generate code from a schema — classic microservice-to-microservice traffic at scale. Its compactness and speed pay off, and the strict schema is a feature. <strong>It's a mistake</strong> when: the API is public or consumed by many external/unknown clients (they'd all need your schema and codegen — JSON "just works" in every language and browser), when the volume is modest (the savings are noise, but you've added a schema/build burden and lost eyeball-debuggability), or when your bottleneck is actually <em>latency</em> or database time, not serialization — optimizing the wrong layer. The meta-lesson: match the format to who reads it and where the real cost is, don't cargo-cult "binary is faster."</p>
+</details>
+
+<details>
+<summary><strong>Q5.</strong> Your app needs to know when a background video finishes processing on a third-party service that can take anywhere from 10 seconds to an hour. Compare polling and a webhook for this, using Part F. Which is better and why?</summary>
+<p><strong>Polling</strong> means asking "done yet?" on a schedule — say every 10 seconds. Over an hour that's 360 requests, almost all answered "not yet"; too-frequent polling wastes huge traffic, too-infrequent polling adds delay after it's actually done, and you must guess the right interval for a job whose length varies by 360×. A <strong>webhook</strong> fits far better here: you register a callback URL once, stop asking, and the service sends you exactly one HTTP request the moment processing finishes — no wasted polls, no guessing an interval, and minimal delay regardless of whether the job took 10 seconds or an hour (Part F). Webhooks shine precisely for <em>infrequent, unpredictably-timed</em> events like this. (Polling still has its place — it's simpler, needs no public endpoint on your side, and is fine for frequent, predictable checks — but "long, variable wait for a single event" is the webhook's home turf.)</p>
+</details>
+
+<details>
+<summary><strong>Q6 (stretch).</strong> Before reading Phase 6, sketch three different ways you <em>could</em> stop the lost update in LinkBoard right now, and name a downside of each.</summary>
+<p>All three are real, and Phase 6 formalizes the best one. <strong>(a) A lock around the critical section</strong> — make the read-modify-write hold a lock so only one upvote runs it at a time (Phase 1's mutex idea). Correct, but it <em>serializes</em> upvotes (throughput bottleneck), and a single in-process lock stops helping the moment you run more than one server process (Phase 9) — you'd need a <em>distributed</em> lock, which is its own hard problem. <strong>(b) An atomic increment</strong> — have the storage layer offer "add 1 to this field" as one indivisible operation, so there's no read-then-write gap to interleave. Clean and fast, but a plain JSON file can't provide atomicity; you need a system that does (a database, or Redis's atomic <code>INCR</code> in Phase 8). <strong>(c) A database transaction</strong> — wrap the read-modify-write so the database guarantees it happens as one all-or-nothing unit, detecting or preventing conflicting concurrent updates (Phase 6's ACID). The "right" general answer, but it requires the very thing we don't have yet: a real database. Notice all three roads lead out of "a file" — which is exactly why the next chapter of LinkBoard is a database.</p>
+</details>
+
+<footer class="next">
+  <span class="label">Next phase</span>
+  <p><strong>Phase 05 — The Browser: LinkBoard Gets a Face</strong>, where LinkBoard finally gets a visual frontend — a real HTML/CSS/JavaScript page that talks to this API. We'll meet the browser's rendering engine, the DOM, browser caching, and the three storage "drawers" (cookies vs localStorage vs sessionStorage) — and we'll hit the CORS wall face-first by serving the frontend separately from the API, then understand exactly why browsers built that wall.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

@@ -15,17 +15,20 @@ basics.
 
 ## How to run it right now
 
-**LinkBoard is alive!** As of Phase 3 there's a **hand-written HTTP server** to
-run — raw sockets, no framework, but now speaking real HTTP (methods, status
-codes, headers, cookies, keep-alive). Inside WSL:
+**LinkBoard is a real API!** As of Phase 4 it's a **FastAPI JSON REST API**
+(submit / list / upvote / comment). Inside WSL:
 
 ```bash
 cd /mnt/d/Projects/linkboard/project
-python3 server.py            # http://localhost:8000 ; Ctrl+C to stop
-# in another terminal:
-curl -v localhost:8000       # the homepage, headers and all
-curl -v -c jar.txt -b jar.txt localhost:8000/count   # cookies — run it twice
+python3 -m venv .venv && source .venv/bin/activate   # one-time setup
+pip install -r requirements.txt
+uvicorn app:app --reload --port 8000                 # then open http://localhost:8000/docs
+# in another terminal — watch two upvotes eat a vote:
+python3 race_demo.py
 ```
+
+The earlier hand-written raw-socket server (Phases 2–3) is still there and still
+runs with `python3 server.py` (no dependencies) — the origin story.
 
 Lessons are styled HTML pages — **open them in your browser** (double-click):
 
@@ -35,16 +38,19 @@ Lessons are styled HTML pages — **open them in your browser** (double-click):
 - Phase 2 (done): `concepts/phase-02-internet-and-protocols/lesson.html` —
   the internet, packets, IP, DNS, TCP/UDP, and the "one slow client freezes
   everyone" demo (`project/slow_client.py`).
-- Phase 3 (current): `concepts/phase-03-http-deep-dive/lesson.html` — HTTP taken
+- Phase 3 (done): `concepts/phase-03-http-deep-dive/lesson.html` — HTTP taken
   apart properly (methods & idempotency, status codes, headers, cookies,
   keep-alive, TLS), and the server above grown into a real HTTP parser.
+- Phase 4 (current): `concepts/phase-04-apis-and-rest/lesson.html` — APIs & REST,
+  JSON & serialization, hash maps & big-O, webhooks; LinkBoard becomes a FastAPI
+  app (`project/app.py`) and the vote-eating race (`project/race_demo.py`).
 
 ## Progress
 
 | Part | Phases | Status |
 |---|---|---|
-| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · ✅ 02 Internet & protocols · 🔨 03 HTTP | 🔨 Phase 03 in progress |
-| II — Building LinkBoard | 04 APIs & REST · 05 Browser/frontend · 06 PostgreSQL · 07 Security & auth | ⬜ |
+| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · ✅ 02 Internet & protocols · ✅ 03 HTTP | ✅ Done |
+| II — Building LinkBoard | 🔨 04 APIs & REST · 05 Browser/frontend · 06 PostgreSQL · 07 Security & auth | 🔨 Phase 04 in progress |
 | III — Scaling reads & ops | 08 Caching & Redis · 09 Docker, Nginx & scaling | ⬜ |
 | IV — Async & data systems | 10 RabbitMQ/SQS/SNS · 11 Kafka · 12 Elasticsearch · 13 MongoDB & NoSQL | ⬜ |
 | V — Real-time & writes | 14 WebSockets · 15 Replication, Cassandra & CAP | ⬜ |

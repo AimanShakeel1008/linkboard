@@ -1,0 +1,9 @@
+# LinkBoard v1 (Phase 4) — Python dependencies.
+# Install into a virtual environment (see project/README.md):
+#     python3 -m venv .venv && source .venv/bin/activate
+#     pip install -r requirements.txt
+
+fastapi>=0.111        # the web framework: routing, validation, JSON, auto-docs
+uvicorn[standard]>=0.30   # the ASGI server that actually runs the FastAPI app
+# (pydantic comes in automatically as a FastAPI dependency — it powers the
+#  request models / validation in app.py.)

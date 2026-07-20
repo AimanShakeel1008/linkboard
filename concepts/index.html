@@ -25,9 +25,9 @@
       <a href="#part-8">Part VIII — AI &amp; Capstone</a>
     </nav>
     <div class="toc-bottom">
-      <a class="nav-card" href="phase-03-http-deep-dive/lesson.html">
-        <span class="nav-label">Current · Phase 03 →</span>
-        <span class="nav-title">HTTP Deep Dive</span>
+      <a class="nav-card" href="phase-04-apis-and-rest/lesson.html">
+        <span class="nav-label">Current · Phase 04 →</span>
+        <span class="nav-title">LinkBoard v1: APIs &amp; REST</span>
       </a>
     </div>
   </div>
@@ -48,7 +48,7 @@
 
 <h2 id="roadmap"><span class="secno">1.</span> The roadmap &mdash; you are here</h2>
 
-<p>The course is a straight climb through eight stages. Each stage groups several phases that share a theme. You are at the very start of the climb, in <strong>Bedrock</strong>.</p>
+<p>The course is a straight climb through eight stages. Each stage groups several phases that share a theme. <strong>Bedrock</strong> (phases 00&ndash;03) is complete — you've built the ground everything stands on. You're now in <strong>Build</strong>, turning the toy server into a real application.</p>
 
 <figure class="fig">
   <svg viewBox="0 0 760 150" role="img" aria-label="Course roadmap of eight stages from left to right: stage one Bedrock (you are here now), stage two Build, stage three Scale reads, stage four Async, stage five Real-time and write scaling, stage six Production, stage seven Cloud, stage eight AI and capstone. You are currently in stage one, Bedrock.">
@@ -67,16 +67,16 @@
     <line x1="550.5" y1="60" x2="589.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
     <line x1="645.5" y1="60" x2="684.5" y2="60" class="fig-edge" marker-end="url(#rm-arrow)"/>
 
-    <!-- "you are here" pointer over the first stage -->
-    <text x="8" y="16" class="fig-youhere">&#9662; You are here</text>
+    <!-- "you are here" pointer over the current stage (Build) -->
+    <text x="103" y="16" class="fig-youhere">&#9662; You are here</text>
 
-    <!-- stage 1: Bedrock (NOW) -->
-    <circle cx="47.5"  cy="60" r="26" class="fig-stage-now"/>
+    <!-- stage 1: Bedrock (DONE) -->
+    <circle cx="47.5"  cy="60" r="26" class="fig-stage-done"/>
     <text x="47.5"  y="66"  text-anchor="middle" class="fig-stage-num">I</text>
     <text x="47.5"  y="106" text-anchor="middle" class="fig-t-sm">Bedrock</text>
 
-    <!-- stage 2: Build -->
-    <circle cx="142.5" cy="60" r="26" class="fig-stage-todo"/>
+    <!-- stage 2: Build (NOW) -->
+    <circle cx="142.5" cy="60" r="26" class="fig-stage-now"/>
     <text x="142.5" y="66"  text-anchor="middle" class="fig-stage-num">II</text>
     <text x="142.5" y="106" text-anchor="middle" class="fig-t-sm">Build</text>
 
@@ -110,7 +110,7 @@
     <text x="712.5" y="66"  text-anchor="middle" class="fig-stage-num">VIII</text>
     <text x="712.5" y="106" text-anchor="middle" class="fig-t-sm">AI &amp; capstone</text>
   </svg>
-  <figcaption>The eight stages of the course, left to right. <strong>Orange</strong> is the stage you're on now (Bedrock); <strong>grey</strong> stages are planned and still ahead; a <strong>green</strong> stage (none yet) means every phase inside it is finished. The same three colours label every phase in the list below, so the map and the list always agree.</figcaption>
+  <figcaption>The eight stages of the course, left to right. <strong>Orange</strong> is the stage you're on now (Build); <strong>green</strong> stages are finished (Bedrock is done — all four of its phases complete); <strong>grey</strong> stages are planned and still ahead. The same three colours label every phase in the list below, so the map and the list always agree.</figcaption>
 </figure>
 
 <h2 id="legend"><span class="secno">2.</span> Legend</h2>
@@ -142,18 +142,18 @@
   <li><a class="hub-row" href="phase-03-http-deep-dive/lesson.html">
     <span class="hub-num">P03</span>
     <span class="hub-title">HTTP Deep Dive <small>M3 &mdash; methods, idempotency, status codes, headers, cookies, keep-alive, TLS</small></span>
-    <span class="status status-now">Now</span>
+    <span class="status status-done">Done</span>
   </a></li>
 </ul>
 
 <h2 id="part-2"><span class="secno">4.</span> Part II &mdash; Building LinkBoard</h2>
 <p class="hub-part">Turning the toy server into a real application</p>
 <ul class="hub-list">
-  <li><div class="hub-row is-planned">
+  <li><a class="hub-row" href="phase-04-apis-and-rest/lesson.html">
     <span class="hub-num">P04</span>
-    <span class="hub-title">LinkBoard v1: APIs &amp; REST <small>M9</small></span>
-    <span class="status status-planned">Planned</span>
-  </div></li>
+    <span class="hub-title">LinkBoard v1: APIs &amp; REST <small>M9 &mdash; APIs, REST, JSON, serialization, hash maps &amp; big-O, webhooks; the vote race</small></span>
+    <span class="status status-now">Now</span>
+  </a></li>
   <li><div class="hub-row is-planned">
     <span class="hub-num">P05</span>
     <span class="hub-title">The Browser: LinkBoard Gets a Frontend <small>M4</small></span>
@@ -298,7 +298,7 @@
 
 <footer class="next">
   <span class="label">Where to go now</span>
-  <p>New here? Start with <a href="phase-00-tools-of-the-trade/lesson.html">Phase 00 &mdash; Tools of the Trade</a>. Already moving? The current lesson is <a href="phase-03-http-deep-dive/lesson.html">Phase 03 &mdash; HTTP Deep Dive</a>. This hub updates as each phase is finished.</p>
+  <p>New here? Start with <a href="phase-00-tools-of-the-trade/lesson.html">Phase 00 &mdash; Tools of the Trade</a>. Already moving? The current lesson is <a href="phase-04-apis-and-rest/lesson.html">Phase 04 &mdash; LinkBoard v1: APIs &amp; REST</a>. This hub updates as each phase is finished.</p>
 </footer>
 
 </main>

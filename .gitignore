@@ -8,6 +8,10 @@ __pycache__/
 .venv/
 venv/
 
+# Phase 3-4 runtime artifacts: generated when you run the app/demos
+project/links.json       # LinkBoard v1's JSON "database" — regenerated from SEED
+project/jar.txt          # curl cookie jar from the Phase 3 /count demo
+
 # Environment / secrets (Phase 11 will use a real API key — never commit it)
 .env
 
