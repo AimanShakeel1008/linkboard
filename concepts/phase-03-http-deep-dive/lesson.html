@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 03 — HTTP Deep Dive</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="page">
+
+<aside class="toc">
+  <div class="toc-inner">
+    <p class="toc-phase">Phase 03</p>
+    <nav>
+      <a href="#why">Why this phase exists</a>
+      <a href="#pa">A. Request &amp; response; "stateless"</a>
+      <a href="#pb">B. Anatomy of a request</a>
+      <a href="#pc">C. Methods &amp; idempotency</a>
+      <a href="#pd">D. Status codes</a>
+      <a href="#pe">E. Headers that matter</a>
+      <a href="#pf">F. Cookies, sessions &amp; JWT</a>
+      <a href="#pg">G. Keep-alive; HTTP/1.1 vs 2 vs 3</a>
+      <a href="#ph">H. HTTPS &amp; the TLS handshake</a>
+      <a href="#code">The code we wrote</a>
+      <a href="#run">Run it &amp; watch the logs</a>
+      <a href="#break">Break it / observe it</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#challenges">Challenges &amp; Questions</a>
+    </nav>
+    <div class="toc-bottom">
+      <a class="nav-card" href="../phase-02-internet-and-protocols/lesson.html">
+        <span class="nav-label">← Prev · Phase 02</span>
+        <span class="nav-title">The Internet &amp; Protocols</span>
+      </a>
+      <a class="nav-map" href="../index.html">↑ Course map</a>
+    </div>
+  </div>
+</aside>
+
+<main>
+
+<header class="lesson">
+  <p class="kicker">LinkBoard · Part I — Bedrock</p>
+  <h1>Phase 03 — HTTP Deep Dive</h1>
+  <p class="covers"><strong>Covers:</strong> M3 (HTTP). <strong>You need:</strong> everything from <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> (WSL, Python 3, <code>curl</code>). <strong>Where the code lives:</strong> we grow <code>project/server.py</code> from the toy of Phase 2 into a real hand-written HTTP engine — methods, status codes, a proper header parser, cookies, and HTTP/1.1 keep-alive — still no framework, still nothing magic.</p>
+</header>
+
+<h2 id="why">Why this phase exists</h2>
+
+<p>In <a href="../phase-02-internet-and-protocols/lesson.html">Phase 2</a> we built a web server out of raw <span class="term" tabindex="0" data-def="Your program's endpoint for network communication — the doorway to TCP that the kernel manages for you.">sockets</span> and got a page back. But look closely at what that server actually <em>understood</em> about the web: almost nothing. It read the very first line, snatched the method and path, threw away every header, spoke only <code>GET</code>, and hung up after a single reply. It was a machine that could receive an HTTP request the way a dog can receive a newspaper — it fetched the object without reading a word of it.</p>
+
+<p>This phase is where we <em>read the newspaper</em>. The thing riding on top of TCP — the actual language your browser and a server speak — is called <strong>HTTP</strong> (HyperText Transfer Protocol). It is the single most important protocol you will touch in this entire course, because everything LinkBoard does from here on is an HTTP conversation: submitting a link, logging in, loading the homepage, calling an API, talking to another service. If HTTP is a black box to you, all of web development stays a black box. So we open it all the way up.</p>
+
+<p>And here's the reassuring truth, the same one as every phase: HTTP is not magic and it is not even complicated. <strong>HTTP is just structured text sent over a socket.</strong> A request is text in a strict shape. A response is text in a strict shape. That's the whole protocol. By the end of this phase you'll have written the parser that reads that text and the builder that writes it — by hand — and you'll never again wonder what a "404" or a "header" or a "cookie" really is.</p>
+
+<p>Here's the path:</p>
+
+<ol>
+  <li><strong>Part A</strong> — Request and response, and what "stateless" really means.</li>
+  <li><strong>Part B</strong> — The anatomy of a request: method, path, headers, body — it's just structured text.</li>
+  <li><strong>Part C</strong> — The methods (GET, POST, PUT, DELETE…) and idempotency: why PUT is retry-safe and POST isn't.</li>
+  <li><strong>Part D</strong> — Status codes: the five families and the specific numbers worth knowing.</li>
+  <li><strong>Part E</strong> — The headers that actually matter, and what each one does.</li>
+  <li><strong>Part F</strong> — Cookies, and how a stateless protocol remembers you (sessions vs JWT).</li>
+  <li><strong>Part G</strong> — Keep-alive and connection reuse; HTTP/1.1 vs HTTP/2 vs HTTP/3.</li>
+  <li><strong>Part H</strong> — HTTPS and the TLS handshake, step by step: how the padlock happens.</li>
+</ol>
+
+<p>Then we read the upgraded server line by line, run it, and poke it until every idea above becomes something you can <em>see</em> in the logs.</p>
+
+<h2 id="pa">Part A — Request &amp; response, and the word "stateless"</h2>
+
+<p>HTTP has exactly one shape of interaction, and it never varies: <strong>the client asks, the server answers, done.</strong> One request in, one response out. The client (your browser, <code>curl</code>, LinkBoard's future JavaScript) always speaks first; the server only ever <em>replies</em>. A server never spontaneously sends you something out of the blue over plain HTTP — it waits to be asked. (Making the server able to push updates on its own is a real effort that needs a different tool, WebSockets, which is Phase 14.)</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 210" role="img" aria-label="The HTTP request-response cycle: the client sends one request to the server, the server does its work and sends back one response. The client always speaks first.">
+    <defs>
+      <marker id="rr-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="40" y="80" width="160" height="50" rx="8"></rect>
+    <text class="fig-t" x="120" y="102" text-anchor="middle">Client</text>
+    <text class="fig-t-sm" x="120" y="120" text-anchor="middle">browser / curl</text>
+    <rect class="fig-box-ext" x="460" y="80" width="160" height="50" rx="8"></rect>
+    <text class="fig-t" x="540" y="102" text-anchor="middle">Server</text>
+    <text class="fig-t-sm" x="540" y="120" text-anchor="middle">LinkBoard</text>
+
+    <line class="fig-edge-hi" x1="200" y1="92" x2="460" y2="92" marker-end="url(#rr-arrow)"></line>
+    <text class="fig-t-hi" x="330" y="82" text-anchor="middle">request</text>
+    <text class="fig-mono" x="330" y="66" text-anchor="middle">GET / HTTP/1.1</text>
+
+    <line class="fig-edge-hi" x1="460" y1="118" x2="200" y2="118" marker-end="url(#rr-arrow)"></line>
+    <text class="fig-t-hi" x="330" y="140" text-anchor="middle">response</text>
+    <text class="fig-mono" x="330" y="158" text-anchor="middle">HTTP/1.1 200 OK · &lt;html&gt;…</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the client (the side you're driving); <strong>violet</strong> = the server run by someone else. Every HTTP interaction is this one round-trip: the client asks, the server answers, and the exchange is over. Nothing else happens until the client asks again.</figcaption>
+</figure>
+
+<h3>"Stateless": the server has amnesia between requests</h3>
+
+<p>Here is the single most important — and most surprising — fact about HTTP: it is <strong>stateless</strong>. That word gets thrown around a lot, so let's make it concrete. Stateless means the server, by default, <em>remembers absolutely nothing about you from one request to the next.</em> Each request arrives as if it were the very first time the server has ever heard from you. There is no built-in "who is this and what were they doing?"</p>
+
+<p>Picture a coffee shop where the barista has total amnesia the instant you step away from the counter. You order a coffee, walk to find a seat, come back for a napkin — and the barista has no idea you were ever there. "Can I help you?" Every single interaction starts from zero. That is an HTTP server. Your first request ("log me in") and your next request ("show my profile") are, to the server, two strangers who happen to look alike.</p>
+
+<div class="note">
+  <span class="label">📝 Why on earth would you design it that way?</span>
+  <p>It sounds like a flaw, but statelessness is a superpower for scaling — and it's <em>why</em> the whole later half of this course is even possible. If the server keeps no memory of you, then <em>any</em> server can handle <em>any</em> request. There's no "but only server #3 remembers this user." That means you can put a hundred identical servers behind a <span class="term" tabindex="0" data-def="A component that spreads incoming requests across many identical servers so no single one is overwhelmed.">load balancer</span> (Phase 9) and each request lands on whichever one is free. The cost of that freedom is that <em>we</em> must add the memory back on top, deliberately, when we want it — which is exactly what cookies and sessions (Part F) are for. Amnesia by default; memory by choice.</p>
+</div>
+
+<details class="check">
+  <summary>Quick check: if HTTP forgets you after every request, how does a site keep you logged in across dozens of page loads?</summary>
+  <p>The <em>server</em> stays amnesiac, so the memory has to travel <em>with each request</em>. On login the server hands your browser a small token (a cookie), and your browser automatically attaches that token to every future request. So each request arrives carrying its own proof of "I'm the user who logged in a minute ago." The server still remembers nothing on its own — it just reads the note you bring every time. That's Part F, and it's the workaround the entire logged-in web is built on.</p>
+</details>
+
+<h2 id="pb">Part B — Anatomy of a request: it's just structured text</h2>
+
+<p>Let's dissect a real request. When you run <code>curl -v localhost:8000/about</code>, this is (roughly) the exact text your machine sends across the socket. The invisible line-endings are shown as <code>\r\n</code> (a carriage-return followed by a line-feed — a two-character line break HTTP inherited from typewriters and still insists on):</p>
+
+<pre><code><span class="hi">GET /about HTTP/1.1</span>          <span class="c"># 1. the REQUEST LINE: method, path, version</span>
+Host: localhost:8000         <span class="c"># 2. HEADERS: one "Name: value" per line</span>
+User-Agent: curl/7.81.0
+Accept: */*
+                             <span class="c"># 3. a BLANK LINE — "the headers are over"</span>
+                             <span class="c"># 4. the BODY goes here (GET usually has none)</span></code></pre>
+
+<p>Four parts, always in this order. Learn these four and you have learned the request half of HTTP:</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 300" role="img" aria-label="The four parts of an HTTP request stacked as labelled bands: the request line at top, then the header lines, then a mandatory blank line, then the optional body at the bottom.">
+    <rect class="fig-box-you" x="150" y="24" width="360" height="46" rx="8"></rect>
+    <text class="fig-mono" x="330" y="52" text-anchor="middle">GET /about HTTP/1.1</text>
+    <text class="fig-t-sm" x="530" y="51" text-anchor="start">① request line</text>
+
+    <rect class="fig-box-infra" x="150" y="80" width="360" height="88" rx="8"></rect>
+    <text class="fig-mono" x="170" y="106" text-anchor="start">Host: localhost:8000</text>
+    <text class="fig-mono" x="170" y="128" text-anchor="start">User-Agent: curl/7.81.0</text>
+    <text class="fig-mono" x="170" y="150" text-anchor="start">Accept: */*</text>
+    <text class="fig-t-sm" x="530" y="128" text-anchor="start">② headers</text>
+
+    <rect class="fig-box" x="150" y="178" width="360" height="30" rx="8"></rect>
+    <text class="fig-t-sm" x="330" y="198" text-anchor="middle">(blank line)</text>
+    <text class="fig-t-sm" x="530" y="197" text-anchor="start">③ end of headers</text>
+
+    <rect class="fig-box" x="150" y="218" width="360" height="58" rx="8" stroke-dasharray="6 5"></rect>
+    <text class="fig-t-sm" x="330" y="245" text-anchor="middle">body — optional</text>
+    <text class="fig-t-sm" x="330" y="263" text-anchor="middle">(form fields on a POST, etc.)</text>
+    <text class="fig-t-sm" x="530" y="251" text-anchor="start">④ body</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the request line (the part <em>you</em> most directly control); <strong>teal</strong> = the headers (metadata the client and infrastructure fill in); <strong>neutral</strong> = the structural blank line and the optional body. Read top to bottom, it's the exact byte order that travels down the socket — the blank line is the crucial separator that tells the server "headers done, body (if any) starts now."</figcaption>
+</figure>
+
+<ol>
+  <li><strong>The request line</strong> — three words: the <em>method</em> (the verb: what do you want to do?), the <em>path</em> (which resource? <code>/about</code>), and the <em>version</em> (<code>HTTP/1.1</code>). This one line is the essence of the request.</li>
+  <li><strong>The headers</strong> — a list of <code>Name: value</code> lines carrying metadata <em>about</em> the request: who's asking (<code>User-Agent</code>), what host they meant (<code>Host</code>), what formats they'll accept (<code>Accept</code>), how long the body is (<code>Content-Length</code>), and much more. Header names are case-insensitive (<code>Host</code> and <code>host</code> are the same). We'll spend Part E here.</li>
+  <li><strong>The blank line</strong> — a single empty line. This is not decoration; it is a hard rule. It's how the server knows the headers have ended and the body (if any) begins. Our Phase 2 server literally looped reading bytes until it saw this blank line (<code>\r\n\r\n</code>).</li>
+  <li><strong>The body</strong> — the actual payload, present only on requests that carry data (a form submission, a file upload, a JSON API call). A plain <code>GET</code> has no body; a <code>POST</code> that submits a link does. The <code>Content-Length</code> header tells the server exactly how many body bytes to read.</li>
+</ol>
+
+<p>The response has the mirror-image shape, which you already saw hand-built in Phase 2: a <em>status line</em> instead of a request line (<code>HTTP/1.1 200 OK</code>), then headers, then a blank line, then the body (the HTML page). Same four parts, same order. Request and response are two envelopes of the identical design.</p>
+
+<div class="realworld">
+  <p>"Explain what happens in an HTTP request" is one of the most common opening questions in a web or systems interview, precisely because it's a fractal — you can answer it in ten seconds ("method, path, headers, body; server replies with a status line, headers, body") or spend an hour going down through TCP, DNS, and TLS. Knowing the four parts cold, and being able to name a header for each concern (auth, caching, content type), is the difference between "I use a framework" and "I understand the wire." You're building the second kind of knowledge by writing the parser yourself.</p>
+</div>
+
+<h2 id="pc">Part C — The methods, and the idea of idempotency</h2>
+
+<p>The method is the <em>verb</em> of the request — it announces your intent. The path says <em>which</em> resource; the method says <em>what to do</em> with it. There are a handful, and each has an agreed meaning that the whole web honors:</p>
+
+<table>
+  <tr><th>Method</th><th>Means</th><th>Has a body?</th><th>Example</th></tr>
+  <tr><td><code>GET</code></td><td>read a resource; never change anything</td><td>no</td><td>load the homepage</td></tr>
+  <tr><td><code>HEAD</code></td><td>like GET but headers only, no body</td><td>no</td><td>"is this page there / how big?"</td></tr>
+  <tr><td><code>POST</code></td><td>create something / submit data</td><td>yes</td><td>submit a new link</td></tr>
+  <tr><td><code>PUT</code></td><td>replace a resource with this exact value</td><td>yes</td><td>set a link's points to 100</td></tr>
+  <tr><td><code>PATCH</code></td><td>partially update a resource</td><td>yes</td><td>change just the title</td></tr>
+  <tr><td><code>DELETE</code></td><td>remove a resource</td><td>usually no</td><td>delete a link</td></tr>
+</table>
+
+<h3>The two rules that give methods meaning: "safe" and "idempotent"</h3>
+
+<p>Two properties separate these verbs, and both matter enormously in real systems. They sound like jargon; they're actually simple promises.</p>
+
+<p>A method is <strong>safe</strong> if it only <em>reads</em> — it never changes anything on the server. <code>GET</code> and <code>HEAD</code> are safe. This is why a browser feels free to pre-fetch links, and why a search-engine crawler can hit every <code>GET</code> on your site without fear: reading can't break anything. It's also why you must <em>never</em> hide a destructive action behind a <code>GET</code> (a link that deletes a post when clicked is a classic, painful bug — a crawler or a "prefetch" will find it and quietly delete everything).</p>
+
+<p>A method is <strong>idempotent</strong> if doing it <em>once</em> and doing it <em>many times in a row</em> leave the server in the <em>same state</em>. The word looks scary; the idea is everyday. Think of a light switch labeled "OFF." Flip it to OFF once, or flip it to OFF ten times — the light is off either way. That's idempotent: repeating the action doesn't pile up. Now think of a switch labeled "PRESS TO ADD ONE COOKIE TO MY ORDER." Press it once, you have one cookie; press it five times, you have five. That's <em>not</em> idempotent: each repeat changes the world again.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 250" role="img" aria-label="Idempotency contrast: PUT setting points to 100 lands in the same state no matter how many times it repeats, while POST adding a link accumulates a new link each time.">
+    <text class="fig-t-hi" x="165" y="30" text-anchor="middle">PUT (idempotent)</text>
+    <rect class="fig-box-you" x="60" y="46" width="210" height="30" rx="6"></rect>
+    <text class="fig-mono" x="165" y="66" text-anchor="middle">set points = 100</text>
+    <text class="fig-t-sm" x="165" y="98" text-anchor="middle">run 1×  →  points = 100</text>
+    <text class="fig-t-sm" x="165" y="118" text-anchor="middle">run 5×  →  points = 100</text>
+    <text class="fig-t-sm" x="165" y="146" text-anchor="middle">same end state</text>
+
+    <line class="fig-vs" x1="330" y1="40" x2="330" y2="200"></line>
+    <text class="fig-vs-t" x="330" y="130" text-anchor="middle">VS</text>
+
+    <text class="fig-t-hi" x="495" y="30" text-anchor="middle">POST (not idempotent)</text>
+    <rect class="fig-box-you" x="390" y="46" width="210" height="30" rx="6"></rect>
+    <text class="fig-mono" x="495" y="66" text-anchor="middle">add a link</text>
+    <text class="fig-t-sm" x="495" y="98" text-anchor="middle">run 1×  →  +1 link</text>
+    <text class="fig-t-sm" x="495" y="118" text-anchor="middle">run 5×  →  +5 links</text>
+    <text class="fig-t-sm" x="495" y="146" text-anchor="middle">each repeat piles up</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the request you send (the action you own). Left: <code>PUT</code> writes a fixed value, so repeating it changes nothing further — idempotent. Right: <code>POST</code> creates a new thing each time, so repeats accumulate — not idempotent. This isn't pedantry: it decides whether a client may safely <em>retry</em> a request it isn't sure went through.</figcaption>
+</figure>
+
+<p>Here's the idempotency of each method, and — crucially — <em>why you care</em>:</p>
+
+<ul>
+  <li><code>GET</code>, <code>HEAD</code>, <code>PUT</code>, <code>DELETE</code> are <strong>idempotent</strong>. <code>PUT</code> sets a resource to a specific value (do it twice, same value). <code>DELETE</code> removes it (delete twice, it's still gone — same end state). Reads obviously don't change anything.</li>
+  <li><code>POST</code> is <strong>not</strong> idempotent. Each <code>POST /submit</code> <em>adds</em> a link. Send it twice and you get two links.</li>
+</ul>
+
+<div class="note">
+  <span class="label">📝 Why this is a real engineering concern, not trivia</span>
+  <p>Networks are unreliable (Phase 2 — packets get lost). So imagine a client sends a request, and the reply never comes back. Did the server do the work and only the <em>reply</em> got lost? Or did the whole request get lost? The client can't tell. Its only options are "retry" or "give up." If the method is <strong>idempotent</strong>, retrying is <em>completely safe</em> — worst case the server does the same harmless thing again. If it's <strong>not</strong> (a <code>POST</code> that charges a credit card), a blind retry might charge you twice. This is exactly why the "are you sure you want to resubmit this form?" browser warning exists, and why serious systems put special machinery around non-idempotent operations (idempotency keys — a Phase 21 topic). The instant you internalize "idempotent means retry-safe," a huge amount of distributed-systems design suddenly makes sense.</p>
+</div>
+
+<details class="check">
+  <summary>Quick check: your app has a "like" button. Should clicking it be a GET, and is "toggle like" idempotent?</summary>
+  <p>It should <strong>not</strong> be a <code>GET</code> — liking <em>changes</em> server state, and <code>GET</code> must be safe (read-only), or a crawler/prefetch could "like" things by merely loading links. Use <code>POST</code> (or <code>PUT</code>). Is "toggle" idempotent? <em>No</em> — toggling once turns the like on, toggling again turns it off; repeats flip back and forth, so the end state depends on the count. If instead you design it as "set liked = true" (a <code>PUT</code>-style set), it <em>becomes</em> idempotent: any number of repeats leaves it liked. Choosing "set to a value" over "toggle" to gain idempotency is a real API-design move you'll make on purpose.</p>
+</details>
+
+<h2 id="pd">Part D — Status codes: the server's three-digit verdict</h2>
+
+<p>Every response starts with a <strong>status code</strong> — a three-digit number that tells the client how the request went, instantly, before it reads a single byte of the body. You met a few in Phase 2 (200, 404, 405). Now let's see the whole system, because it's beautifully organized: <strong>the first digit is the family (the gist), and the rest is the specific case.</strong></p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 260" role="img" aria-label="The five status-code families by leading digit: 1xx informational, 2xx success, 3xx redirection, 4xx client error, 5xx server error, each with example codes.">
+    <rect class="fig-box" x="30" y="30" width="600" height="34" rx="6"></rect>
+    <text class="fig-mono" x="50" y="52" text-anchor="start">1xx</text>
+    <text class="fig-t" x="150" y="52" text-anchor="start">Informational</text>
+    <text class="fig-t-sm" x="330" y="52" text-anchor="start">"hold on, still going" — rare (100 Continue)</text>
+
+    <rect class="fig-box-infra" x="30" y="72" width="600" height="34" rx="6"></rect>
+    <text class="fig-mono" x="50" y="94" text-anchor="start">2xx</text>
+    <text class="fig-t" x="150" y="94" text-anchor="start">Success</text>
+    <text class="fig-t-sm" x="330" y="94" text-anchor="start">200 OK · 201 Created · 204 No Content</text>
+
+    <rect class="fig-box" x="30" y="114" width="600" height="34" rx="6"></rect>
+    <text class="fig-mono" x="50" y="136" text-anchor="start">3xx</text>
+    <text class="fig-t" x="150" y="136" text-anchor="start">Redirection</text>
+    <text class="fig-t-sm" x="330" y="136" text-anchor="start">301 Moved · 302 Found · 304 Not Modified</text>
+
+    <rect class="fig-box-you" x="30" y="156" width="600" height="34" rx="6"></rect>
+    <text class="fig-mono" x="50" y="178" text-anchor="start">4xx</text>
+    <text class="fig-t" x="150" y="178" text-anchor="start">Client error</text>
+    <text class="fig-t-sm" x="330" y="178" text-anchor="start">400 Bad Request · 401 · 403 · 404 · 405 · 429</text>
+
+    <rect class="fig-box-ext" x="30" y="198" width="600" height="34" rx="6"></rect>
+    <text class="fig-mono" x="50" y="220" text-anchor="start">5xx</text>
+    <text class="fig-t" x="150" y="220" text-anchor="start">Server error</text>
+    <text class="fig-t-sm" x="330" y="220" text-anchor="start">500 Internal · 502 Bad Gateway · 503 Unavailable</text>
+  </svg>
+  <figcaption>The five families by leading digit. The colours flag <em>whose problem</em> it is: <strong>orange 4xx</strong> = the client's fault (you sent something wrong); <strong>violet 5xx</strong> = the server's fault (it broke); teal 2xx = clean success; neutral 1xx/3xx = process/redirect. Reading just the first digit already tells you where to go looking.</figcaption>
+</figure>
+
+<p>The families, in plain words:</p>
+
+<ul>
+  <li><strong>1xx — Informational.</strong> "Message received, keep going." Rare in everyday work; you can mostly ignore them.</li>
+  <li><strong>2xx — Success.</strong> It worked. <code>200 OK</code> (here's what you asked for), <code>201 Created</code> (your POST made a new thing), <code>204 No Content</code> (worked, but there's deliberately nothing to send back).</li>
+  <li><strong>3xx — Redirection.</strong> "What you want is elsewhere." <code>301 Moved Permanently</code> (update your bookmarks) and <code>302 Found</code> (temporary) both come with a <code>Location</code> header naming the new address; the browser follows it. <code>304 Not Modified</code> is the caching star of Phase 8: "your saved copy is still good, don't re-download."</li>
+  <li><strong>4xx — Client error. <em>You</em> messed up.</strong> <code>400 Bad Request</code> (we couldn't parse what you sent), <code>401 Unauthorized</code> (you're not logged in), <code>403 Forbidden</code> (we know who you are; you still can't), <code>404 Not Found</code> (no such thing), <code>405 Method Not Allowed</code> (wrong verb for this path), <code>429 Too Many Requests</code> (slow down — rate limiting).</li>
+  <li><strong>5xx — Server error. <em>The server</em> messed up.</strong> <code>500 Internal Server Error</code> (a bug threw an exception), <code>502 Bad Gateway</code> (a server in front couldn't reach the one behind it), <code>503 Service Unavailable</code> (overloaded or down for maintenance).</li>
+</ul>
+
+<div class="warn">
+  <span class="label">⚠️ The 401 vs 403 trap (and the 401 misnomer)</span>
+  <p>These two are constantly confused. <strong>401 Unauthorized</strong> actually means "un<em>authenticated</em>" — the server doesn't know <em>who you are</em>; log in and try again. <strong>403 Forbidden</strong> means "I know exactly who you are, and you're still not allowed" — logging in won't help; you lack permission. (Yes, "401 Unauthorized" is a famous naming mistake baked into the standard forever — it's about authentication, not authorization.) A related judgment call: some sites return <code>404</code> instead of <code>403</code> on purpose, so an attacker can't even learn that a protected resource <em>exists</em>. These distinctions are Phase 7 (auth) and Phase 24 (security) material, but you're meeting the vocabulary now.</p>
+</div>
+
+<details class="check">
+  <summary>Quick check: your server catches a bug in your own code while handling a request. Is that a 4xx or a 5xx?</summary>
+  <p>A <strong>5xx</strong> — specifically <code>500 Internal Server Error</code>. The 4xx family is for when the <em>client</em> sent something wrong; a bug in <em>your</em> handler is the <em>server's</em> fault, so it belongs in the 5xx family. This matters operationally: dashboards alarm on 5xx rates (your fault, wake someone up) very differently from 4xx rates (often just clients probing bad URLs). Our upgraded server does exactly this — it wraps each route in a try/except and turns any handler crash into a 500 instead of dying, which you'll see in the code walkthrough.</p>
+</details>
+
+<h2 id="pe">Part E — The headers that actually matter</h2>
+
+<p>Headers are the metadata of HTTP — the <code>Name: value</code> lines that ride alongside every request and response. There are dozens, but a working engineer really only needs to know a couple dozen, and a beginner needs maybe ten. Here are the ones you'll meet again and again, grouped by what they're <em>for</em>:</p>
+
+<table>
+  <tr><th>Header</th><th>Direction</th><th>What it does</th></tr>
+  <tr><td><code>Host</code></td><td>request</td><td>which website you meant (one server/IP can host many sites; this disambiguates). The one header HTTP/1.1 <em>requires</em>.</td></tr>
+  <tr><td><code>User-Agent</code></td><td>request</td><td>what software is asking (browser, curl, a bot). Servers use it for stats and quirks.</td></tr>
+  <tr><td><code>Accept</code></td><td>request</td><td>what formats the client can handle (<code>text/html</code>, <code>application/json</code>…). The server may honor it.</td></tr>
+  <tr><td><code>Content-Type</code></td><td>both</td><td>what format the <em>body</em> actually is (<code>text/html</code>, <code>application/json</code>, <code>application/x-www-form-urlencoded</code>).</td></tr>
+  <tr><td><code>Content-Length</code></td><td>both</td><td>how many bytes the body is, so the other side knows when it's fully arrived (Phase 2's crucial number).</td></tr>
+  <tr><td><code>Authorization</code></td><td>request</td><td>your credentials / token — "here's proof of who I am" (Part F, and Phase 7).</td></tr>
+  <tr><td><code>Location</code></td><td>response</td><td>on a 3xx redirect, the address to go to instead.</td></tr>
+  <tr><td><code>Cache-Control</code></td><td>both</td><td>if/how long this may be cached (<code>no-store</code>, <code>max-age=60</code>…). The whole language of Phase 8.</td></tr>
+  <tr><td><code>Set-Cookie</code></td><td>response</td><td>"store this and send it back to me next time" — how state is added (Part F).</td></tr>
+  <tr><td><code>Cookie</code></td><td>request</td><td>the stored cookies the browser echoes back on every request.</td></tr>
+  <tr><td><code>Connection</code></td><td>both</td><td><code>keep-alive</code> or <code>close</code> — reuse this TCP connection, or hang up after? (Part G).</td></tr>
+</table>
+
+<p>Notice the pattern: headers are how the two sides negotiate <em>everything that isn't the raw content itself</em> — identity, format, length, caching, connection reuse, authentication. The request line says <em>what you want</em>; the headers say <em>everything about how</em>. Our server reads <code>Host</code>, <code>User-Agent</code>, <code>Content-Length</code>, <code>Authorization</code>, <code>Cookie</code>, and <code>Connection</code> for real, and <em>writes</em> <code>Content-Type</code>, <code>Content-Length</code>, <code>Location</code>, <code>Cache-Control</code>, <code>Set-Cookie</code>, and <code>Connection</code> — you'll watch each one do its job.</p>
+
+<h2 id="pf">Part F — Cookies: how a stateless protocol remembers you</h2>
+
+<p>Back to Part A's puzzle: HTTP is stateless — the server forgets you between requests — yet you obviously stay logged in as you click around. The trick is beautifully simple, and it's called a <strong>cookie</strong>.</p>
+
+<p>A cookie is a small piece of text the server asks the browser to <em>hold onto and hand back</em>. The flow is a three-step loop:</p>
+
+<ol>
+  <li>On some response, the server includes a <code>Set-Cookie: visits=1</code> header. This says: "please remember this name=value."</li>
+  <li>The browser stores it, quietly, tied to that site.</li>
+  <li>On <em>every</em> subsequent request to that site, the browser automatically adds a <code>Cookie: visits=1</code> header. The server reads it and — presto — "remembers" you, even though it kept no memory of its own.</li>
+</ol>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 280" role="img" aria-label="The cookie round-trip: the server sends Set-Cookie on the first response, the browser stores it, and the browser sends it back in a Cookie header on every later request, letting the stateless server recognise the visitor.">
+    <defs>
+      <marker id="ck-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="40" y="24" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="115" y="49" text-anchor="middle">Browser</text>
+    <rect class="fig-box-ext" x="470" y="24" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="545" y="49" text-anchor="middle">Server</text>
+    <line class="fig-edge-dash" x1="115" y1="64" x2="115" y2="264"></line>
+    <line class="fig-edge-dash" x1="545" y1="64" x2="545" y2="264"></line>
+
+    <line class="fig-edge" x1="115" y1="92" x2="545" y2="92" marker-end="url(#ck-arrow)"></line>
+    <text class="fig-t-sm" x="330" y="86" text-anchor="middle">1. GET /count  (no cookie yet)</text>
+
+    <line class="fig-edge-hi" x1="545" y1="126" x2="115" y2="126" marker-end="url(#ck-arrow)"></line>
+    <text class="fig-t-hi" x="330" y="120" text-anchor="middle">2. 200 OK · Set-Cookie: visits=1</text>
+
+    <rect class="fig-box" x="40" y="146" width="150" height="34" rx="6"></rect>
+    <text class="fig-t-sm" x="115" y="167" text-anchor="middle">stores visits=1</text>
+
+    <line class="fig-edge-hi" x1="115" y1="206" x2="545" y2="206" marker-end="url(#ck-arrow)"></line>
+    <text class="fig-t-hi" x="330" y="200" text-anchor="middle">3. GET /count · Cookie: visits=1</text>
+
+    <line class="fig-edge" x1="545" y1="240" x2="115" y2="240" marker-end="url(#ck-arrow)"></line>
+    <text class="fig-t-sm" x="330" y="234" text-anchor="middle">4. 200 OK · Set-Cookie: visits=2  ("I remember you")</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = the browser (your side, which does the remembering); <strong>violet</strong> = the stateless server. The server never stores your state — it plants a note (<code>Set-Cookie</code>) and the browser carries that note back (<code>Cookie</code>) on every visit. The highlighted lines are the cookie doing its work: the whole logged-in web is built on this loop.</figcaption>
+</figure>
+
+<p>Our upgraded server has a live demo of exactly this at <code>/count</code>: it reads the <code>visits</code> cookie, adds one, and sends back a new <code>Set-Cookie</code>. Hit it repeatedly with the same cookie jar and watch the count climb — the server "remembering" you without remembering anything.</p>
+
+<h3>What actually goes in the cookie? Sessions vs JWT</h3>
+
+<p>A login cookie shouldn't literally say <code>user=admin</code> — anyone could just edit it. There are two mainstream designs for doing it safely, and you'll choose between them in Phase 7. Meet them by name now:</p>
+
+<ul>
+  <li><strong>Session cookie (server-side memory).</strong> The cookie holds only a big random meaningless ID, like <code>session=8f3a…c2</code>. The <em>real</em> data ("this ID is user 42, logged in at 3pm") lives in a table on the server (or in Redis — Phase 8). Each request, the server looks up the ID to find who you are. The cookie is just a claim-check ticket; the coat is in the server's cloakroom. Easy to revoke (delete the row), but every request needs a lookup.</li>
+  <li><strong>JWT (self-contained token).</strong> The cookie (or an <code>Authorization</code> header) holds the <em>actual</em> data — "user 42, expires 4pm" — plus a cryptographic signature the server can verify but a client can't forge. No server-side lookup needed: the token carries its own proof. Great for scaling (any server can verify it alone), but awkward to revoke before it expires. This is JSON Web Token, and it leans on the signing ideas of Phase 7.</li>
+</ul>
+
+<p>The tradeoff — a lookup-required ticket you can revoke instantly, versus a self-proving token that scales but lingers — is a genuine design decision, not a right-vs-wrong. We'll implement one for real when LinkBoard gets logins. For now the point is: a cookie is just text the browser carries for you, and <em>what</em> you put in it is where the engineering lives.</p>
+
+<div class="warn">
+  <span class="label">⚠️ Cookies are why security gets interesting</span>
+  <p>Because the browser sends cookies <em>automatically</em> on every request to a site, they're both the backbone of login and the source of whole classes of attacks (CSRF, session hijacking, XSS stealing cookies). That's why real cookies carry flags like <code>HttpOnly</code> (JavaScript can't read it — blunts XSS theft), <code>Secure</code> (only sent over HTTPS), and <code>SameSite</code> (not sent on cross-site requests — blunts CSRF). Our server already sets <code>HttpOnly</code> on its demo cookie as an early good habit. The full story is Phase 7 and Phase 24; the seed is planted here.</p>
+</div>
+
+<h2 id="pg">Part G — Keep-alive, and HTTP/1.1 vs /2 vs /3</h2>
+
+<p>Recall Phase 2's expensive ritual: before a single byte of data flows, TCP does its <span class="term" tabindex="0" data-def="The SYN / SYN-ACK / ACK exchange that opens every TCP connection before any data can flow — one full round-trip of pure setup.">three-way handshake</span>, costing a full network round-trip of pure <span class="term" tabindex="0" data-def="The time for one bit to travel to the far end and a reply to come back — set mostly by physical distance, and unavoidable.">latency</span>. If every image, script, and click on a page opened a <em>fresh</em> TCP connection, you'd pay that handshake toll over and over. A single web page pulling 50 resources would mean 50 handshakes. That's brutal.</p>
+
+<h3>Keep-alive: reuse the connection</h3>
+
+<p>HTTP/1.1's fix is <strong>keep-alive</strong> (persistent connections): after answering a request, <em>don't hang up</em> — hold the same TCP connection open and let the client send its next request over it. Pay the handshake once, then reuse the pipe for request after request. This is precisely the "reuse the connection so you pay the handshake toll once" idea you predicted back in Phase 2's challenge, now a real, named feature.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 250" role="img" aria-label="Connection-per-request versus keep-alive: on the left each request pays its own TCP handshake; on the right one handshake is followed by many requests reusing the same connection.">
+    <text class="fig-t-hi" x="165" y="28" text-anchor="middle">Connection per request</text>
+    <text class="fig-t-sm" x="165" y="52" text-anchor="middle">handshake before every request</text>
+    <rect class="fig-box-infra" x="70" y="66" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="165" y="84" text-anchor="middle">🤝 handshake → req 1</text>
+    <rect class="fig-box-infra" x="70" y="100" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="165" y="118" text-anchor="middle">🤝 handshake → req 2</text>
+    <rect class="fig-box-infra" x="70" y="134" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="165" y="152" text-anchor="middle">🤝 handshake → req 3</text>
+    <text class="fig-t-sm" x="165" y="188" text-anchor="middle">3 handshakes = 3 round-trips wasted</text>
+
+    <line class="fig-vs" x1="330" y1="60" x2="330" y2="200"></line>
+    <text class="fig-vs-t" x="330" y="134" text-anchor="middle">VS</text>
+
+    <text class="fig-t-hi" x="495" y="28" text-anchor="middle">Keep-alive</text>
+    <text class="fig-t-sm" x="495" y="52" text-anchor="middle">one handshake, many requests</text>
+    <rect class="fig-box-you" x="400" y="66" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="495" y="84" text-anchor="middle">🤝 handshake (once)</text>
+    <rect class="fig-box" x="400" y="100" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="495" y="118" text-anchor="middle">req 1 · req 2 · req 3 …</text>
+    <rect class="fig-box" x="400" y="134" width="190" height="26" rx="5"></rect>
+    <text class="fig-t-sm" x="495" y="152" text-anchor="middle">all on the same connection</text>
+    <text class="fig-t-sm" x="495" y="188" text-anchor="middle">handshake paid once, then amortized</text>
+  </svg>
+  <figcaption>Left (teal, infra churn): a new TCP handshake before every request wastes a round-trip each time. Right (orange, the one setup you own): a single handshake, then many requests reuse the connection. Our Phase 3 server implements the right-hand side — watch the logs show <code>req#1</code>, <code>req#2</code>, <code>req#3</code> on one <code>conn#</code>.</figcaption>
+</figure>
+
+<h3>The version ladder: /1.1 → /2 → /3</h3>
+
+<p>Keep-alive helped, but HTTP/1.1 still has a flaw: on one connection, requests are answered <em>in order</em>. If request 1 is slow, requests 2 and 3 wait behind it even though they're ready — a traffic jam called <strong>head-of-line blocking</strong>. The newer versions exist to kill it:</p>
+
+<ul>
+  <li><strong>HTTP/1.1 (1997)</strong> — one request at a time per connection, answered in order. Keep-alive reuses the connection, but a slow response blocks the ones behind it. Browsers work around this by opening ~6 parallel connections per site. This is the version <em>we</em> implement.</li>
+  <li><strong>HTTP/2 (2015)</strong> — <em>multiplexing</em>: many requests and responses interleave over a <em>single</em> connection at once, chopped into independent "streams," so a slow one no longer blocks the others. One lane became many logical lanes on the same road. Also compresses headers.</li>
+  <li><strong>HTTP/3 (2022)</strong> — same multiplexing idea, but rebuilt on top of <span class="term" tabindex="0" data-def="A fast, connectionless transport protocol that fires packets without setup or delivery guarantees — the opposite of TCP.">UDP</span> instead of TCP (via a protocol called QUIC). Why? Because HTTP/2's streams still sat on one TCP connection, and TCP's own "deliver everything in order" rule reintroduced head-of-line blocking at the packet level. Moving to UDP lets each stream recover from a lost packet independently. It also folds the TLS handshake into the connection setup, so secure connections start faster.</li>
+</ul>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 210" role="img" aria-label="HTTP/1.1 sends requests one after another in a single lane with head-of-line blocking, while HTTP/2 multiplexes several requests as parallel interleaved streams over one connection.">
+    <text class="fig-t-hi" x="165" y="28" text-anchor="middle">HTTP/1.1 — one lane</text>
+    <rect class="fig-box-infra" x="50" y="46" width="230" height="40" rx="6"></rect>
+    <rect class="fig-box" x="60" y="56" width="40" height="20" rx="4"></rect>
+    <text class="fig-mono" x="80" y="71" text-anchor="middle">1</text>
+    <rect class="fig-box" x="108" y="56" width="40" height="20" rx="4"></rect>
+    <text class="fig-mono" x="128" y="71" text-anchor="middle">2</text>
+    <rect class="fig-box" x="156" y="56" width="40" height="20" rx="4"></rect>
+    <text class="fig-mono" x="176" y="71" text-anchor="middle">3</text>
+    <text class="fig-t-sm" x="165" y="112" text-anchor="middle">2 and 3 wait behind 1</text>
+    <text class="fig-t-sm" x="165" y="132" text-anchor="middle">(head-of-line blocking)</text>
+
+    <line class="fig-vs" x1="330" y1="44" x2="330" y2="170"></line>
+    <text class="fig-vs-t" x="330" y="110" text-anchor="middle">VS</text>
+
+    <text class="fig-t-hi" x="495" y="28" text-anchor="middle">HTTP/2 — many streams</text>
+    <rect class="fig-box-you" x="380" y="46" width="230" height="40" rx="6"></rect>
+    <rect class="fig-box" x="390" y="56" width="30" height="20" rx="4"></rect>
+    <text class="fig-mono" x="405" y="71" text-anchor="middle">1</text>
+    <rect class="fig-box" x="424" y="56" width="30" height="20" rx="4"></rect>
+    <text class="fig-mono" x="439" y="71" text-anchor="middle">2</text>
+    <rect class="fig-box" x="458" y="56" width="30" height="20" rx="4"></rect>
+    <text class="fig-mono" x="473" y="71" text-anchor="middle">1</text>
+    <rect class="fig-box" x="492" y="56" width="30" height="20" rx="4"></rect>
+    <text class="fig-mono" x="507" y="71" text-anchor="middle">3</text>
+    <rect class="fig-box" x="526" y="56" width="30" height="20" rx="4"></rect>
+    <text class="fig-mono" x="541" y="71" text-anchor="middle">2</text>
+    <text class="fig-t-sm" x="495" y="112" text-anchor="middle">requests interleave on one</text>
+    <text class="fig-t-sm" x="495" y="132" text-anchor="middle">connection — none blocks another</text>
+  </svg>
+  <figcaption>Left: HTTP/1.1 serializes requests in a single lane, so a slow request 1 stalls 2 and 3. Right: HTTP/2 interleaves independent streams (numbered fragments mixed together) over one connection, so no request waits on another. HTTP/3 keeps this but moves it onto UDP to dodge TCP's own in-order blocking.</figcaption>
+</figure>
+
+<div class="realworld">
+  <p>You almost never <em>implement</em> HTTP/2 or /3 yourself — a web server (Nginx, Phase 9) or a CDN terminates them for you and often talks plain HTTP/1.1 to your app behind the scenes. So why learn the ladder? Because it's a perfect interview story about <em>the same problem attacked at successive layers</em>: latency of many requests → reuse the connection (keep-alive) → stop them blocking each other (multiplexing, HTTP/2) → stop the transport itself from blocking (UDP/QUIC, HTTP/3). Each version fixes the bottleneck the previous one exposed. Being able to tell that story — and say "and my hand-written server is the /1.1 rung" — shows you understand <em>why</em> the stack looks the way it does, not just its names.</p>
+</div>
+
+<h2 id="ph">Part H — HTTPS and the TLS handshake: how the padlock happens</h2>
+
+<p>Everything so far has been plain HTTP: text sent in the clear. Anyone who can see your packets on the way — the coffee-shop WiFi, your internet provider, a router in between — can read every byte, and worse, <em>change</em> it. For a link aggregator that might be survivable; for a password or a credit-card number it's a catastrophe. <strong>HTTPS</strong> is the fix, and the "S" is a single added layer called <strong>TLS</strong> (Transport Layer Security).</p>
+
+<p>TLS wraps your ordinary HTTP in an encrypted tunnel and gives you three guarantees at once:</p>
+
+<ul>
+  <li><strong>Confidentiality</strong> — eavesdroppers see only scrambled gibberish, not your data.</li>
+  <li><strong>Integrity</strong> — if anyone tampers with the bytes in transit, both ends detect it and the connection breaks.</li>
+  <li><strong>Authentication</strong> — you can be sure the server is really <code>yourbank.com</code> and not an impostor, because it presents a <em>certificate</em> vouched for by an authority your browser trusts.</li>
+</ul>
+
+<p>It works through a <strong>TLS handshake</strong> that happens right after the TCP handshake, before any HTTP flows. Simplified to its essence:</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 660 320" role="img" aria-label="A simplified TLS handshake sequence: client hello, server hello with its certificate, the client verifies the certificate and both agree on a shared secret key, after which encrypted HTTP flows.">
+    <defs>
+      <marker id="tls-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="fig-arrow-hi" d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <rect class="fig-box-you" x="46" y="20" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="121" y="45" text-anchor="middle">Your browser</text>
+    <rect class="fig-box-ext" x="464" y="20" width="150" height="40" rx="8"></rect>
+    <text class="fig-t" x="539" y="45" text-anchor="middle">Server</text>
+    <line class="fig-edge-dash" x1="121" y1="60" x2="121" y2="308"></line>
+    <line class="fig-edge-dash" x1="539" y1="60" x2="539" y2="308"></line>
+
+    <line class="fig-edge-hi" x1="121" y1="92" x2="539" y2="92" marker-end="url(#tls-arrow)"></line>
+    <text class="fig-t-sm" x="150" y="86" text-anchor="start">1. ClientHello — "let's do TLS; here are the ciphers I support"</text>
+
+    <line class="fig-edge-hi" x1="539" y1="132" x2="121" y2="132" marker-end="url(#tls-arrow)"></line>
+    <text class="fig-t-sm" x="510" y="126" text-anchor="end">2. ServerHello + certificate</text>
+
+    <rect class="fig-box" x="30" y="152" width="182" height="46" rx="6"></rect>
+    <text class="fig-t-sm" x="121" y="172" text-anchor="middle">3. verify the certificate</text>
+    <text class="fig-t-sm" x="121" y="190" text-anchor="middle">(signed by a trusted CA?)</text>
+
+    <line class="fig-edge-hi" x1="121" y1="224" x2="539" y2="224" marker-end="url(#tls-arrow)"></line>
+    <text class="fig-t-sm" x="150" y="218" text-anchor="start">4. agree on a shared secret key</text>
+
+    <line class="fig-edge" x1="121" y1="270" x2="539" y2="270" marker-end="url(#tls-arrow)"></line>
+    <line class="fig-edge" x1="539" y1="292" x2="121" y2="292" marker-end="url(#tls-arrow)"></line>
+    <text class="fig-t-hi" x="330" y="264" text-anchor="middle">5. now encrypted HTTP flows both ways 🔒</text>
+  </svg>
+  <figcaption><strong>Orange</strong> = your browser; <strong>violet</strong> = the server. The client and server exchange hellos, the server proves its identity with a certificate the browser checks against trusted authorities, and the two agree on a secret key — only then does real HTTP flow, now encrypted. This costs extra round-trips on top of TCP's handshake, which is part of why latency (Phase 2) is so precious and why HTTP/3 works to fold these steps together.</figcaption>
+</figure>
+
+<p>The clever part is step 4: the two sides agree on a shared secret key <em>without ever sending it across the wire in a form an eavesdropper could use</em>, using public-key cryptography (the deep magic of Phase 7). After that, everything — the request line, the headers, the cookies, the body — is encrypted with that key. An eavesdropper sees only that you're talking to some server and roughly how much; the content is opaque.</p>
+
+<div class="note">
+  <span class="label">📝 Where this lands for us</span>
+  <p>We do <em>not</em> implement TLS in our server — hand-rolling cryptography is a famously dangerous idea, and in the real world a layer in front (Nginx in Phase 9, or a cloud load balancer in Phase 20) "terminates TLS" and hands plain HTTP to your app behind a firewall. So your application code usually speaks plain HTTP and something else provides the padlock. But you should understand the handshake, because it explains the padlock icon, the "your connection is not private" warnings, why HTTPS adds latency, and why certificates expire and must be renewed. You'll set up real HTTPS in the Docker/Nginx and cloud phases.</p>
+</div>
+
+<h2 id="code">The code we wrote</h2>
+
+<p>The Phase 2 server grew up. Same single file, <code>project/server.py</code>, but it now takes HTTP seriously. Here's the shape of what changed, and the key excerpts.</p>
+
+<h3>1. A real request parser</h3>
+
+<p>Phase 2 grabbed the first line and ignored the rest. Now <code>parse_request</code> splits the header block off at the blank line, pulls apart the request line into method/path/version, and folds every header into a dictionary with lower-cased names (so header lookups are case-insensitive, as the spec demands). Bad input raises <code>BadRequest</code>, which becomes a real <code>400</code> instead of a crash:</p>
+
+<pre><code><span class="kw">def</span> <span class="fn">parse_request</span>(raw):
+    <span class="c"># Headers are text; the body stays raw bytes. Split at the blank line.</span>
+    header_block, _, body = raw.<span class="fn">partition</span>(<span class="str">b"\r\n\r\n"</span>)
+    lines = header_block.<span class="fn">decode</span>(<span class="str">"iso-8859-1"</span>).<span class="fn">split</span>(<span class="str">"\r\n"</span>)
+
+    method, path, version = lines[<span class="num">0</span>].<span class="fn">split</span>(<span class="str">" "</span>)   <span class="c"># "GET /about HTTP/1.1"</span>
+
+    headers = {}
+    <span class="kw">for</span> line <span class="kw">in</span> lines[<span class="num">1</span>:]:
+        name, value = line.<span class="fn">split</span>(<span class="str">":"</span>, <span class="num">1</span>)      <span class="c"># "Host: localhost:8000"</span>
+        headers[name.<span class="fn">strip</span>().<span class="fn">lower</span>()] = value.<span class="fn">strip</span>()   <span class="c"># fold name to lower-case</span>
+    <span class="kw">return</span> <span class="fn">Request</span>(method, path, version, headers, body)</code></pre>
+
+<h3>2. A Response object with a full status-code table</h3>
+
+<p>Instead of gluing response strings by hand, a <code>Response</code> object holds a status code, a headers dict, and a body, and knows how to serialize itself to exact bytes. A <code>REASON_PHRASES</code> table maps every code we use to its human phrase. Crucially, <code>to_bytes(include_body=False)</code> is how we answer a <code>HEAD</code> request — identical headers (including the <code>Content-Length</code> the body <em>would</em> have had), but no body:</p>
+
+<pre><code><span class="kw">def</span> <span class="fn">to_bytes</span>(self, include_body=<span class="kw">True</span>):
+    reason = REASON_PHRASES.<span class="fn">get</span>(self.status, <span class="str">"Unknown"</span>)   <span class="c"># 200 -> "OK"</span>
+    self.headers[<span class="str">"Content-Length"</span>] = <span class="fn">str</span>(<span class="fn">len</span>(self.body))   <span class="c"># always the real byte count</span>
+
+    lines = [<span class="str">f"HTTP/1.1 {self.status} {reason}"</span>]        <span class="c"># the status line</span>
+    <span class="kw">for</span> name, value <span class="kw">in</span> self.headers.<span class="fn">items</span>():
+        lines.<span class="fn">append</span>(<span class="str">f"{name}: {value}"</span>)
+    head = (<span class="str">"\r\n"</span>.<span class="fn">join</span>(lines) + <span class="str">"\r\n\r\n"</span>).<span class="fn">encode</span>(<span class="str">"iso-8859-1"</span>)
+    <span class="kw">return</span> head + self.body <span class="kw">if</span> include_body <span class="kw">else</span> head   <span class="c"># HEAD: headers only</span></code></pre>
+
+<h3>3. Routes that each teach one HTTP idea</h3>
+
+<p>The <code>route</code> function is a plain if/elif chain (Phase 4's framework will replace it), but each branch demonstrates something concrete: a <code>301</code> redirect with a <code>Location</code> header at <code>/old-home</code>; a <code>401</code> gate that checks for an <code>Authorization</code> header at <code>/secret</code>; the cookie counter at <code>/count</code>; a <code>POST /submit</code> that <em>appends</em> a link (non-idempotent — POST again, get a duplicate); and <code>PUT</code>/<code>DELETE</code> on <code>/links</code> that are idempotent by contrast. Here's the idempotency pair, the heart of Part C made real:</p>
+
+<pre><code><span class="c"># POST: each call ADDS a link -> send it twice, get two links (NOT idempotent)</span>
+<span class="kw">if</span> path == <span class="str">"/submit"</span>:
+    LINKS.<span class="fn">append</span>({<span class="str">"title"</span>: title, <span class="str">"url"</span>: url, <span class="str">"points"</span>: <span class="num">1</span>})
+    <span class="kw">return</span> <span class="fn">Response</span>(<span class="num">201</span>, <span class="str">f"Added. Now {len(LINKS)} links."</span>)   <span class="c"># 201 Created</span>
+
+<span class="c"># PUT: SET every link to 100 -> run 1x or 100x, same state (idempotent)</span>
+<span class="kw">if</span> path == <span class="str">"/links"</span> <span class="kw">and</span> req.method == <span class="str">"PUT"</span>:
+    <span class="kw">for</span> link <span class="kw">in</span> LINKS:
+        link[<span class="str">"points"</span>] = <span class="num">100</span>
+    <span class="kw">return</span> <span class="fn">Response</span>(<span class="num">200</span>, <span class="str">"All links set to 100. Do it again — same result."</span>)</code></pre>
+
+<h3>4. Keep-alive: many requests over one connection</h3>
+
+<p>The biggest structural change. <code>handle_connection</code> is now a <em>loop</em>: it reads a request, answers it, and — if the client wants keep-alive and we're under our per-connection limit — <em>keeps the socket open</em> and reads the next request over the same connection. Because one <code>recv</code> can pull bytes belonging to the next request too, a per-connection buffer carries the spillover forward. The keep-alive decision honors both the client's wish and our own limits:</p>
+
+<pre><code><span class="c"># Reuse this TCP connection only if the client wants it AND we're under our cap.</span>
+keep = req.<span class="fn">wants_keep_alive</span>() <span class="kw">and</span> served &lt; KEEPALIVE_MAX_REQUESTS
+resp.<span class="fn">set</span>(<span class="str">"Connection"</span>, <span class="str">"keep-alive"</span> <span class="kw">if</span> keep <span class="kw">else</span> <span class="str">"close"</span>)
+conn.<span class="fn">sendall</span>(resp.<span class="fn">to_bytes</span>(include_body=(req.method != <span class="str">"HEAD"</span>)))
+<span class="kw">if</span> <span class="kw">not</span> keep:
+    <span class="kw">return</span>   <span class="c"># client asked to close, or we hit the limit — hang up</span></code></pre>
+
+<div class="warn">
+  <span class="label">⚠️ The flaw is still here — on purpose</span>
+  <p>Keep-alive did <em>not</em> fix Phase 2's real limitation: the server still handles <strong>one connection at a time</strong>. In fact keep-alive slightly <em>worsens</em> it — now a single client can hold the one and only slot across many requests, and a slow client (run <code>slow_client.py</code> again) still freezes everyone. We are deliberately not solving concurrency yet. Feeling this limit sharpen is what will make threads, processes, and async event loops feel <em>earned</em> when we reach them.</p>
+</div>
+
+<h2 id="run">Run it &amp; watch the logs</h2>
+
+<p>Everything runs <strong>inside WSL</strong>, pure Python standard library — no installs for the server. Open <strong>two terminals</strong> in the project folder.</p>
+
+<h3>Step 0 — get there and start the server</h3>
+
+<pre><code>cd /mnt/d/Projects/linkboard/project
+python3 server.py</code></pre>
+
+<p>Expected — the server boots and blocks in <code>accept()</code>, exactly like Phase 2, but announcing its new abilities:</p>
+
+<pre><code>12:00:00.100 [BOOT] === LinkBoard v0.3 — hand-written HTTP server (Phase 3) ===
+12:00:00.101 [BOOT] now speaks real HTTP: methods, status codes, headers, cookies, keep-alive
+12:00:00.102 [BOOT] STILL one connection at a time, on purpose — see the docstring
+12:00:00.103 [LISTEN] listening on 0.0.0.0:8000 — open http://localhost:8000 or: curl -v localhost:8000
+<span class="hi">12:00:00.104 [WAIT] blocked in accept() — doing nothing until someone connects</span></code></pre>
+
+<h3>Step 1 — a normal GET, and a HEAD</h3>
+
+<p>In <strong>terminal 2</strong>:</p>
+
+<pre><code><span class="c"># A full GET, watch the request AND response headers:</span>
+curl -v localhost:8000
+
+<span class="c"># A HEAD request — headers only, no body (note the -I flag):</span>
+curl -I localhost:8000</code></pre>
+
+<p>For the <code>HEAD</code>, terminal 1 logs the method as <code>HEAD</code>, and terminal 2 shows the response headers (including a <code>Content-Length</code>) but <em>no HTML body</em>. That proves HEAD works: same headers a GET would send, body deliberately withheld. Useful for "does this exist / how big is it?" without downloading.</p>
+
+<h3>Step 2 — see the status-code families</h3>
+
+<pre><code><span class="c"># 301 redirect — -L makes curl FOLLOW the Location header to /:</span>
+curl -v -L localhost:8000/old-home
+
+<span class="c"># 401 without credentials, then 200 WITH an Authorization header:</span>
+curl -i localhost:8000/secret
+curl -i -H <span class="str">"Authorization: Bearer let-me-in"</span> localhost:8000/secret
+
+<span class="c"># 404 (no such path) and 405 (right path, wrong method):</span>
+curl -i localhost:8000/nope
+curl -i -X DELETE localhost:8000/about</code></pre>
+
+<p>Read the first line of each response (<code>curl -i</code> prints it): <code>HTTP/1.1 301</code>, then <code>401</code>, then <code>200</code>, then <code>404</code>, then <code>405</code>. On the <code>405</code>, notice the <code>Allow: GET, HEAD</code> header — the server telling you which verbs that path <em>does</em> accept. On the first <code>401</code>, notice <code>WWW-Authenticate</code> — the server telling you <em>how</em> to authenticate. The status codes from Part D, live.</p>
+
+<h3>Step 3 — cookies: the server "remembers" you</h3>
+
+<pre><code><span class="c"># Use a cookie jar file so curl stores and re-sends cookies, like a browser.</span>
+<span class="c"># Run this SAME line several times and watch the count climb:</span>
+curl -v -c jar.txt -b jar.txt localhost:8000/count</code></pre>
+
+<p>First run: the body says <code>visited /count 1 time(s)</code>, and in the verbose output you'll see the server send <code>Set-Cookie: visits=1</code>. Run it again: the body says <code>2 time(s)</code>, because <code>curl</code> sent <code>Cookie: visits=1</code> back (look for the <code>&gt; Cookie:</code> line) and the server incremented it. You are watching a stateless server "remember" you purely through the cookie round-trip of Part F. (Delete <code>jar.txt</code> to start over at 1.)</p>
+
+<h3>Step 4 — POST vs PUT: idempotency you can count</h3>
+
+<pre><code><span class="c"># POST a new link. Run it TWICE and watch the link count go up BOTH times:</span>
+curl -i -X POST -d <span class="str">"title=Hello&amp;url=http://example.com"</span> localhost:8000/submit
+curl -i -X POST -d <span class="str">"title=Hello&amp;url=http://example.com"</span> localhost:8000/submit
+
+<span class="c"># See the duplicates you just created:</span>
+curl localhost:8000/links
+
+<span class="c"># Now PUT twice — the SECOND run changes nothing further (idempotent):</span>
+curl -i -X PUT localhost:8000/links
+curl -i -X PUT localhost:8000/links
+curl localhost:8000/links   <span class="c"># every link is 100 points, once or twice, same result</span></code></pre>
+
+<p><strong>What this proves:</strong> the two POSTs created <em>two</em> identical "Hello" links — repeating a non-idempotent call piled up. The two PUTs both set every link to 100 points — the second PUT left the world exactly as the first did. You just <em>counted</em> the difference between idempotent and not. This is Part C's whole point, made of real state you can list.</p>
+
+<h3>Step 5 — keep-alive: many requests, one connection</h3>
+
+<pre><code><span class="c"># curl reuses ONE connection for several URLs when you list them together:</span>
+curl -v localhost:8000/ localhost:8000/about localhost:8000/links 2&gt;&amp;1 | grep -iE <span class="str">"Re-using|Connected|GET |Connection:"</span></code></pre>
+
+<p>In terminal 1, watch the log: you'll see a single <code>[CONN] conn#N accepted…</code> followed by <code>req#1</code>, <code>req#2</code>, <code>req#3</code> — three requests on the <em>same</em> connection — and each <code>[SEND]</code> line ending in <code>keep-alive</code> until the last. In terminal 2, curl prints <code>Re-using existing connection</code> for the 2nd and 3rd URLs. That's Part G working: one TCP handshake, many requests. Compare with <code>curl -H "Connection: close" -v localhost:8000</code>, where the server logs the response as <code>closing</code> and hangs up after one.</p>
+
+<h3>Step 6 — the flaw persists: stop the server</h3>
+
+<p>Optionally re-run Phase 2's three-terminal <code>slow_client.py</code> demo (terminal 1 server, terminal 2 <code>python3 slow_client.py</code>, terminal 3 <code>curl localhost:8000</code>) and confirm the fast curl still <em>hangs</em> until the slow client finishes — keep-alive didn't fix concurrency. Then, in terminal 1, press <strong>Ctrl+C</strong>:</p>
+
+<pre><code>^C
+12:10:00.000 [SHUTDOWN] Ctrl+C received — closing the listening socket. Bye.</code></pre>
+
+<h2 id="break">Break it / observe it</h2>
+
+<p>Optional experiments. Each pokes one idea from this phase until you can see it move.</p>
+
+<ol>
+  <li><strong>Send raw HTTP by hand and read the status line.</strong> With the server running: <code>printf 'GET /nope HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n' | nc localhost 8000</code> (install <code>nc</code> with <code>sudo apt install -y netcat-openbsd</code>). The very first line that comes back is <code>HTTP/1.1 404 Not Found</code>. You typed a request with your own hands and read the server's three-digit verdict — proof HTTP is just agreed-upon text.</li>
+  <li><strong>Trigger every family on purpose.</strong> Hit <code>/</code> (200), <code>/old-home</code> (301), <code>/secret</code> (401), <code>/nope</code> (404), <code>-X POST /about</code> (405). Use <code>curl -s -o /dev/null -w "%{http_code}\n" localhost:8000/PATH</code> to print <em>just</em> the number for each — a compact way to see the codes line up.</li>
+  <li><strong>Break the parser, get a 400.</strong> Send deliberately malformed HTTP: <code>printf 'THIS IS NOT HTTP\r\n\r\n' | nc localhost 8000</code>. Instead of crashing, the server answers <code>HTTP/1.1 400 Bad Request</code> and logs a <code>[HTTP] bad request</code> line. That's the <code>BadRequest</code> → 400 path: a server must never die on junk input.</li>
+  <li><strong>Watch a header decide behavior.</strong> Request <code>/secret</code> without and then with <code>-H "Authorization: x"</code>. Same path, same method — the <em>only</em> difference is one header, and it flips a 401 into a 200. Headers aren't decoration; they steer the response.</li>
+  <li><strong>Prove HEAD sends no body.</strong> <code>curl -si localhost:8000</code> (GET) shows headers <em>and</em> HTML; <code>curl -sI localhost:8000</code> (HEAD) shows the same headers — including the same <code>Content-Length</code> — but stops there. The <code>Content-Length</code> advertises a body size that HEAD deliberately doesn't deliver.</li>
+  <li><strong>See keep-alive time out.</strong> Open a connection and just wait: <code>nc localhost 8000</code>, type one valid request and a blank line, read the reply, then <em>don't</em> send a second request. After ~5 seconds the server logs an <code>[IDLE]</code> line and closes the keep-alive connection. That's <code>KEEPALIVE_TIMEOUT_SECONDS</code> reclaiming an idle-but-open connection.</li>
+</ol>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>New terms this phase, in plain words:</p>
+
+<ul>
+  <li><strong>HTTP</strong> — HyperText Transfer Protocol: the request/response text protocol the web speaks over TCP. A request and a response are each just structured text: a first line, headers, a blank line, an optional body.</li>
+  <li><strong>Request line / status line</strong> — the first line of a request (<code>METHOD PATH VERSION</code>) and of a response (<code>VERSION CODE REASON</code>).</li>
+  <li><strong>Header</strong> — a <code>Name: value</code> metadata line. Names are case-insensitive. Carry identity, format, length, caching, cookies, connection control.</li>
+  <li><strong>Body</strong> — the payload after the blank line; present on POST/PUT and on most responses. Its length is given by <code>Content-Length</code>.</li>
+  <li><strong>Stateless</strong> — HTTP keeps no memory of you between requests; each arrives as if it were the first. Memory is added back deliberately with cookies.</li>
+  <li><strong>Method / verb</strong> — the intent of a request: <code>GET</code>/<code>HEAD</code> (read), <code>POST</code> (create), <code>PUT</code> (replace), <code>PATCH</code> (partial update), <code>DELETE</code> (remove).</li>
+  <li><strong>Safe</strong> — a method that only reads and changes nothing (GET, HEAD). <strong>Idempotent</strong> — a method where doing it once and doing it many times leave the same end state (GET, HEAD, PUT, DELETE), so retries are safe; POST is neither.</li>
+  <li><strong>Status code</strong> — the response's three-digit verdict. Families: 1xx info, 2xx success, 3xx redirect, 4xx client error, 5xx server error. Know 200, 201, 301/302, 304, 400, 401, 403, 404, 405, 429, 500, 502, 503.</li>
+  <li><strong>Cookie</strong> — text the server asks the browser to store (<code>Set-Cookie</code>) and the browser echoes back on every request (<code>Cookie</code>), letting a stateless server recognize a returning client.</li>
+  <li><strong>Session vs JWT</strong> — two ways to use a login cookie: a random ID that points at server-side data (session; easy to revoke, needs a lookup) vs a signed self-contained token (JWT; scales without lookup, harder to revoke).</li>
+  <li><strong>Keep-alive / persistent connection</strong> — reusing one TCP connection for many HTTP requests so the handshake is paid once, not per request.</li>
+  <li><strong>Multiplexing</strong> — HTTP/2's interleaving of many requests over one connection so a slow one doesn't block the others; <strong>head-of-line blocking</strong> is the problem it solves.</li>
+  <li><strong>HTTP/1.1 vs /2 vs /3</strong> — one-at-a-time-in-order, multiplexed streams, and multiplexed-over-UDP (QUIC) respectively; each fixes the bottleneck the previous exposed.</li>
+  <li><strong>HTTPS / TLS</strong> — HTTP wrapped in an encrypted, tamper-evident, authenticated tunnel. The <strong>TLS handshake</strong> exchanges hellos, verifies the server's certificate, and agrees a shared secret key before any HTTP flows.</li>
+</ul>
+
+<h2 id="challenges">Challenges &amp; Questions</h2>
+
+<p>Totally optional, answers hidden — think first if you feel like it, or just reveal them.</p>
+
+<details>
+<summary><strong>Q1.</strong> A mobile app sends "create order" to your server, but the reply is lost to a flaky network. The app doesn't know if the order was created. Using this phase's ideas, why is "just retry" dangerous here, and what property would make it safe?</summary>
+<p>"Create order" is naturally a <strong>POST</strong> — and POST is <em>not</em> idempotent (Part C). So a blind retry might create a <em>second</em> order (the first request may have succeeded and only its reply got lost). The property that makes retries safe is <strong>idempotency</strong>: if the same call, repeated, leaves the same end state, retrying is harmless. Real systems make POSTs idempotent with an <strong>idempotency key</strong> — the client attaches a unique ID to the request; the server records "I already processed key ABC" and, on a retry with the same key, returns the original result instead of doing it again. That turns an unsafe retry into a safe one. (This is a real, heavily-used pattern — Stripe's API is a famous example — and it's Phase 21 material. You can already explain <em>why</em> it's needed.)</p>
+</details>
+
+<details>
+<summary><strong>Q2.</strong> Someone builds a "delete this comment" feature as a normal link (<code>&lt;a href="/delete/42"&gt;</code>). A week later, comments start vanishing on their own. What went wrong, in HTTP terms?</summary>
+<p>A clicked link is a <strong>GET</strong>, and GET must be <strong>safe</strong> — read-only (Part C). Hiding a destructive action behind a GET breaks that promise, and the web <em>assumes</em> GETs are safe: browsers pre-fetch links, "link preview" bots (in chat apps, email scanners) fetch URLs to generate thumbnails, and crawlers walk every link they find. Any of those quietly issued <code>GET /delete/42</code> and deleted comments without a human ever clicking. The fix: destructive actions must use <code>POST</code>/<code>DELETE</code>, triggered by a form or JavaScript, never a bare link — and ideally protected against cross-site requests (Phase 7). "Never put a state change behind a GET" is one of the most important safety rules on the web.</p>
+</details>
+
+<details>
+<summary><strong>Q3.</strong> Your monitoring shows a spike of <code>404</code>s and, separately, a spike of <code>500</code>s. Which should wake an engineer at 3am, and why? What would a spike of <code>401</code>s suggest instead?</summary>
+<p>The <strong>500</strong>s should wake someone — 5xx means the <em>server</em> failed (Part D): a bug, a crashed dependency, a database that's down. That's your fault and actively broken. A spike of <strong>404</strong>s is 4xx — the <em>client's</em> side of the fence: usually harmless (a broken external link, a bot probing random URLs, a mistyped path), rarely an emergency, though a sudden 404 spike on pages that <em>should</em> exist can hint at a bad deploy that moved routes. A spike of <strong>401</strong>s (unauthenticated) often means either an expired credential/config breaking legitimate clients, or someone <em>probing</em> your auth (credential-stuffing). This is exactly why real dashboards separate 4xx and 5xx rates — the leading digit routes the alarm to the right person. You now read that digit fluently.</p>
+</details>
+
+<details>
+<summary><strong>Q4.</strong> A login cookie that literally contained <code>user=admin</code> would be a disaster. Explain the attack, then describe how BOTH the session approach and the JWT approach prevent it.</summary>
+<p>The attack is trivial: the browser stores the cookie as plain text and sends it on every request, so any user could just edit their cookie to <code>user=admin</code> and the server would believe them — instant impersonation. Both real designs prevent forgery, differently. <strong>Sessions:</strong> the cookie holds only a big <em>random, meaningless</em> ID (<code>session=8f3a…</code>); the mapping "this ID → user admin" lives on the <em>server</em>, where the client can't touch it. Guessing a valid random ID is infeasible, and the server can revoke it instantly by deleting the row. <strong>JWT:</strong> the cookie <em>does</em> contain <code>user=admin</code>, but with a cryptographic <em>signature</em> the server computes with a secret key. Edit the payload and the signature no longer matches, so the server rejects it; the client can't produce a valid signature without the secret. Session = "keep the truth on the server, hand out a claim-check"; JWT = "let the client hold the truth, but make it un-forgeable." Both are Phase 7, but the reasoning is pure Part F.</p>
+</details>
+
+<details>
+<summary><strong>Q5.</strong> HTTP/1.1 keep-alive lets you reuse a connection, yet browsers <em>still</em> open about six connections per site, and HTTP/2 was invented anyway. What limitation of /1.1 forced both of those, and how does /2 remove it?</summary>
+<p>The limitation is <strong>head-of-line blocking</strong> (Part G): on a single HTTP/1.1 connection, requests are answered strictly <em>in order</em>, so one slow response stalls every request queued behind it, even though they're ready. Keep-alive removed the per-request <em>handshake</em> cost but not this ordering constraint. Browsers hacked around it by opening ~6 parallel connections per origin, so a stall on one didn't block all downloads — but 6 is a crude limit and each connection still has its own overhead. <strong>HTTP/2</strong> removes the root cause with <em>multiplexing</em>: many requests and responses are split into independent streams and interleaved over a <em>single</em> connection, so a slow one no longer blocks the others and you don't need six connections. (And HTTP/3 goes further, moving onto UDP so a lost <em>packet</em> doesn't block unrelated streams — the same problem chased down one more layer.) The through-line: each version attacks the bottleneck the previous one left behind.</p>
+</details>
+
+<details>
+<summary><strong>Q6 (stretch).</strong> Our server sets <code>Content-Length</code> honestly and refuses to trust a single <code>recv</code>. Imagine a server that instead just sent the body and closed the connection to signal "done," with no <code>Content-Length</code>. What breaks — and connect this to why keep-alive specifically <em>needs</em> <code>Content-Length</code>.</summary>
+<p>"Close the connection to signal done" actually works for a <em>single</em> response — that's literally how HTTP/1.0 and our Phase 2 server behaved (<code>Connection: close</code>). The problem appears the moment you want <strong>keep-alive</strong>: if the connection stays open for the <em>next</em> request, the client can no longer use "the connection closed" as the end-of-body marker — the connection is <em>supposed</em> to stay open. So it needs another way to know exactly where this response's body ends and the next response begins. <code>Content-Length</code> is that way: "the body is exactly N bytes; after those N bytes, the next response starts." Without it, keep-alive can't frame messages and the client would either hang waiting for more or run two responses together. (The alternative framing, for when you don't know the length up front — like streaming — is <em>chunked transfer encoding</em>, which sends the body in self-describing pieces; a natural next topic, and how our server would stream a large or generated response.) This is why our reader parses <code>Content-Length</code> and reads <em>exactly</em> that many body bytes before looking for the next request: message framing is what makes connection reuse possible at all.</p>
+</details>
+
+<footer class="next">
+  <span class="label">Next phase</span>
+  <p><strong>Phase 04 — LinkBoard v1: APIs &amp; REST</strong>, where we stop hand-writing every route and every response, adopt a real web framework, and turn LinkBoard into a proper JSON API: resources, REST conventions, JSON vs XML vs Protobuf, and the request/response cycle you just built by hand — now with the boilerplate handled for you, so you can see clearly what the framework was doing all along.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

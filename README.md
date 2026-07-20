@@ -15,14 +15,16 @@ basics.
 
 ## How to run it right now
 
-**LinkBoard is alive!** As of Phase 2 there's a real server to run — an HTTP
-server built from raw sockets. Inside WSL:
+**LinkBoard is alive!** As of Phase 3 there's a **hand-written HTTP server** to
+run — raw sockets, no framework, but now speaking real HTTP (methods, status
+codes, headers, cookies, keep-alive). Inside WSL:
 
 ```bash
 cd /mnt/d/Projects/linkboard/project
 python3 server.py            # http://localhost:8000 ; Ctrl+C to stop
 # in another terminal:
 curl -v localhost:8000       # the homepage, headers and all
+curl -v -c jar.txt -b jar.txt localhost:8000/count   # cookies — run it twice
 ```
 
 Lessons are styled HTML pages — **open them in your browser** (double-click):
@@ -30,15 +32,18 @@ Lessons are styled HTML pages — **open them in your browser** (double-click):
 - Phase 0 (done): `concepts/phase-00-tools-of-the-trade/lesson.html`
 - Phase 1 (done): `concepts/phase-01-how-a-computer-works/lesson.html` —
   its four runnable demos live in that phase's `playground/` folder.
-- Phase 2 (current): `concepts/phase-02-internet-and-protocols/lesson.html` —
-  walks through the server above and the "one slow client freezes everyone"
-  demo (`project/slow_client.py`).
+- Phase 2 (done): `concepts/phase-02-internet-and-protocols/lesson.html` —
+  the internet, packets, IP, DNS, TCP/UDP, and the "one slow client freezes
+  everyone" demo (`project/slow_client.py`).
+- Phase 3 (current): `concepts/phase-03-http-deep-dive/lesson.html` — HTTP taken
+  apart properly (methods & idempotency, status codes, headers, cookies,
+  keep-alive, TLS), and the server above grown into a real HTTP parser.
 
 ## Progress
 
 | Part | Phases | Status |
 |---|---|---|
-| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · 🔨 02 Internet & protocols · 03 HTTP | 🔨 Phase 02 in progress |
+| I — Bedrock | ✅ 00 Linux & Git · ✅ 01 How computers work · ✅ 02 Internet & protocols · 🔨 03 HTTP | 🔨 Phase 03 in progress |
 | II — Building LinkBoard | 04 APIs & REST · 05 Browser/frontend · 06 PostgreSQL · 07 Security & auth | ⬜ |
 | III — Scaling reads & ops | 08 Caching & Redis · 09 Docker, Nginx & scaling | ⬜ |
 | IV — Async & data systems | 10 RabbitMQ/SQS/SNS · 11 Kafka · 12 Elasticsearch · 13 MongoDB & NoSQL | ⬜ |
